@@ -257,7 +257,18 @@ function App(){
   });
 
   const genCode=()=>Math.random().toString(36).slice(2,8).toUpperCase();
-  const setExam=v=>mut(d=>{const c=d.classes[teacher.id];if(c){c.exam=v;if(v)c.examCode=genCode();}});
+  const setExam=v=>mut(d=>{
+    const c=d.classes[teacher.id];if(!c)return;
+    if(v){
+      // Lock ALL students
+      c.examCode=genCode();
+      (c.students||[]).forEach(s=>{c.examStudents=c.examStudents||{};c.examStudents[s.id]=true;});
+      c.exam=true; // keep for UI indicator
+    }else{
+      // Unlock ALL students
+      c.examStudents={};c.exam=false;
+    }
+  });
   const regenCode=()=>mut(d=>{const c=d.classes[teacher.id];if(c)c.examCode=genCode();});
   const clearHelp=sid=>mut(d=>{const c=d.classes[teacher.id];if(c)c.help[sid]=false;});
   const clearPaste=sid=>mut(d=>{const c=d.classes[teacher.id];if(c)c.paste[sid]=false;});
@@ -287,10 +298,24 @@ function App(){
 
   const tryUnlock=()=>{
     const tid=student?.teacherId||teacher?.id;
+    const sid=student?.id||null;
     const d=getDB();
     const cls=d.classes[tid];
     if(cls&&pin.toUpperCase()===cls.examCode){
-      mut(d=>{if(d.classes[tid])d.classes[tid].exam=false;});
+      mut(d=>{
+        const c=d.classes[tid];if(!c)return;
+        if(sid){
+          // Only unlock this one student
+          c.examStudents=c.examStudents||{};
+          c.examStudents[sid]=false;
+          // If no students left in exam, clear global flag too
+          const anyLeft=(c.students||[]).some(s=>c.examStudents[s.id]);
+          if(!anyLeft)c.exam=false;
+        }else{
+          // Teacher unlocking manually = unlock all
+          c.examStudents={};c.exam=false;
+        }
+      });
       setShowPin(false);setPin('');setPinErr('');
     }else setPinErr('Wrong code. Ask your teacher for the current code.');
   };
@@ -391,7 +416,7 @@ function App(){
   if(screen==='student'&&student){
     const cls=getCls(student.teacherId);
     const caps=cls.toggles[student.id]||DEF;
-    const examMode=cls.exam||false;
+    const examMode=!!(cls.examStudents&&cls.examStudents[student.id]);
     const handleKey=e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();handleSend();}};
     return(
       <div className="app">
@@ -483,7 +508,7 @@ function TeacherDash({teacher,cls,students,helpA,pasteA,onlineCt,gEssay,gTrans,g
           <div className="section-title">Teacher Dashboard</div>
           <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
             {cls.exam
-              ?<><button className="btn btn-success" onClick={()=>setExam(false)}>🔓 End Exam</button>
+              ?<><button className="btn btn-success" onClick={()=>setExam(false)}>🔓 End Exam (All)</button>
                 <div style={{background:'#141824',border:'1px solid #1e2535',borderRadius:10,padding:'6px 14px',display:'flex',alignItems:'center',gap:10}}>
                   <span style={{fontSize:12,color:'#64748b'}}>Exit code:</span>
                   <span style={{fontFamily:'DM Mono,monospace',fontSize:16,fontWeight:700,color:'#22c55e',letterSpacing:'.15em'}}>{cls.examCode||'—'}</span>
@@ -523,7 +548,7 @@ function TeacherDash({teacher,cls,students,helpA,pasteA,onlineCt,gEssay,gTrans,g
                     {cls.help[s.id]&&<span className="badge badge-red">🆘</span>}
                     {cls.paste[s.id]&&<span className="badge badge-yellow">⚠️</span>}
                   </div>
-                  <div className="student-status">{cls.exam?'🔒 Exam':cls.online[s.id]?'Active':'Offline'}</div>
+                  <div className="student-status">{(cls.examStudents&&cls.examStudents[s.id])?'🔒 Exam':cls.online[s.id]?'Active':'Offline'}</div>
                   {[['essay','Essay'],['translation','Translation'],['math','Math']].map(([k,l])=>(
                     <div key={k} className="toggle-row">
                       <span className="toggle-label">{l}</span>
