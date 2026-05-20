@@ -302,15 +302,21 @@ function App(){
   const startExam=async()=>{
     if(!teacher||!cls)return;
     const code=genCode();
-    const updates={'classes/'+teacher.id+'/exam':true,'classes/'+teacher.id+'/examCode':code};
-    Object.keys(cls.students||{}).forEach(sid=>{updates['classes/'+teacher.id+'/examStudents/'+sid]=true;});
+    const base='classes/'+teacher.id;
+    const updates={};
+    updates[base+'/exam']=true;
+    updates[base+'/examCode']=code;
+    Object.keys(cls.students||{}).forEach(sid=>{updates[base+'/examStudents/'+sid]=true;});
     await db.ref().update(updates);
   };
 
   const endExam=async()=>{
     if(!teacher||!cls)return;
-    const updates={'classes/'+teacher.id+'/exam':false,'classes/'+teacher.id+'/examCode':''};
-    Object.keys(cls.students||{}).forEach(sid=>{updates['classes/'+teacher.id+'/examStudents/'+sid]=false;});
+    const base='classes/'+teacher.id;
+    const updates={};
+    updates[base+'/exam']=false;
+    updates[base+'/examCode']='';
+    Object.keys(cls.students||{}).forEach(sid=>{updates[base+'/examStudents/'+sid]=false;});
     await db.ref().update(updates);
   };
 
@@ -344,11 +350,13 @@ function App(){
         const anyLeft=Object.values(examStudents).some(Boolean);
         if(!anyLeft)await fbSet('classes/'+tid+'/exam',false);
       }else{
-        // Teacher unlocking all
-        const updates={'classes/'+tid+'/exam':false,'classes/'+tid+'/examCode':''};
-        const students=await fbGet('classes/'+tid+'/students')||{};
-        Object.keys(students).forEach(s=>{updates['classes/'+tid+'/examStudents/'+s]=false;});
-        await db.ref().update(updates);
+        const base2='classes/'+tid;
+        const upd2={};
+        upd2[base2+'/exam']=false;
+        upd2[base2+'/examCode']='';
+        const students=await fbGet(base2+'/students')||{};
+        Object.keys(students).forEach(s=>{upd2[base2+'/examStudents/'+s]=false;});
+        await db.ref().update(upd2);
       }
       setShowPin(false);setPin('');setPinErr('');
     }else setPinErr('Wrong code. Ask your teacher.');
