@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EduAI-Shield</title>
+<script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'DM Sans',sans-serif;background:#0f1117;color:#e2e8f0;min-height:100vh}
+.login-page{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:28px;padding:24px}
+.login-logo{display:flex;align-items:center;gap:12px;font-size:22px;font-weight:700}
+.login-logo-icon{width:44px;height:44px;background:linear-gradient(135deg,#3b82f6,#6366f1);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:22px}
+.login-cards{display:flex;gap:16px;flex-wrap:wrap;justify-content:center}
+.login-card{background:#141824;border:1px solid #1e2535;border-radius:16px;padding:28px 36px;cursor:pointer;text-align:center;transition:all .2s;width:180px}
+.login-card:hover{border-color:#3b82f6;transform:translateY(-3px);box-shadow:0 8px 24px rgba(59,130,246,.15)}
+.login-card-icon{font-size:36px;margin-bottom:10px}
+.login-card-title{font-size:15px;font-weight:600;margin-bottom:4px}
+.login-card-sub{font-size:11px;color:#64748b}
+.auth-box{background:#141824;border:1px solid #1e2535;border-radius:16px;padding:32px;width:100%;max-width:360px}
+.auth-title{font-size:18px;font-weight:600;margin-bottom:6px}
+.auth-sub{font-size:13px;color:#64748b;margin-bottom:22px}
+.auth-input{width:100%;background:#0f1117;border:1px solid #1e2535;border-radius:8px;padding:10px 14px;font-size:14px;color:#e2e8f0;font-family:'DM Sans',sans-serif;outline:none;margin-bottom:12px;transition:.2s}
+.auth-input:focus{border-color:#3b82f6}
+.auth-error{color:#ef4444;font-size:12px;margin-bottom:12px}
+.auth-back{background:none;border:none;color:#64748b;font-size:13px;cursor:pointer;margin-top:14px;font-family:'DM Sans',sans-serif;display:block}
+.auth-back:hover{color:#e2e8f0}
+.app{display:flex;flex-direction:column;min-height:100vh}
+.topbar{background:#0a0d14;border-bottom:1px solid #1e2535;padding:0 24px;height:56px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
+.logo{display:flex;align-items:center;gap:10px;font-weight:600;font-size:15px}
+.logo-icon{width:28px;height:28px;background:linear-gradient(135deg,#3b82f6,#6366f1);border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:13px}
+.main{flex:1;padding:24px;overflow-y:auto}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:10px;border:none;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;transition:all .15s}
+.btn-primary{background:#3b82f6;color:#fff}.btn-primary:hover{background:#2563eb}
+.btn-danger{background:#ef4444;color:#fff}.btn-danger:hover{background:#dc2626}
+.btn-success{background:#22c55e;color:#fff}.btn-success:hover{background:#16a34a}
+.btn-outline{background:transparent;border:1px solid #1e2535;color:#94a3b8}.btn-outline:hover{border-color:#3b82f6;color:#3b82f6}
+.btn-sm{padding:5px 10px;font-size:12px;border-radius:8px}
+.card{background:#141824;border:1px solid #1e2535;border-radius:14px;padding:20px}
+.card-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#64748b;margin-bottom:16px}
+.section-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px}
+.section-title{font-size:20px;font-weight:600}
+.tab-bar{display:flex;gap:3px;background:#1a1f2e;border-radius:10px;padding:3px;margin-bottom:20px;flex-wrap:wrap}
+.tab-btn{padding:6px 14px;border-radius:8px;border:none;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;transition:all .2s;background:transparent;color:#94a3b8}
+.tab-btn.active{background:#3b82f6;color:#fff}
+.tab-btn:hover:not(.active){color:#e2e8f0}
+.toggle{position:relative;width:36px;height:20px;flex-shrink:0}
+.toggle input{opacity:0;width:0;height:0}
+.slider{position:absolute;inset:0;background:#1e2535;border-radius:20px;cursor:pointer;transition:.2s}
+.slider:before{content:'';position:absolute;width:14px;height:14px;left:3px;top:3px;background:#64748b;border-radius:50%;transition:.2s}
+input:checked+.slider{background:#22c55e}
+input:checked+.slider:before{transform:translateX(16px);background:#fff}
+.student-card{background:#141824;border:1px solid #1e2535;border-radius:14px;padding:16px;transition:all .3s}
+.student-card.help{border-color:#ef4444;box-shadow:0 0 0 1px #ef4444,0 0 20px rgba(239,68,68,.2);animation:helpFlash 1s ease-in-out infinite alternate}
+@keyframes helpFlash{0%{box-shadow:0 0 0 1px #ef4444,0 0 10px rgba(239,68,68,.15)}100%{box-shadow:0 0 0 2px #ef4444,0 0 30px rgba(239,68,68,.35)}}
+.student-name{font-weight:600;font-size:14px;margin-bottom:4px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.student-status{font-size:11px;color:#64748b;margin-bottom:12px}
+.toggle-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.toggle-label{font-size:12px;color:#94a3b8}
+.toggle-row-big{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid #1e2535}
+.toggle-row-big:last-child{border-bottom:none}
+.toggle-desc{font-size:13px;font-weight:500}
+.toggle-sub{font-size:11px;color:#64748b;margin-top:2px}
+.badge{font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px}
+.badge-red{background:#ef4444;color:#fff;animation:bounce .5s ease infinite alternate}
+.badge-yellow{background:#f59e0b;color:#000}
+.badge-green{background:#052e16;color:#4ade80}
+@keyframes bounce{0%{transform:scale(1)}100%{transform:scale(1.1)}}
+.alert-strip{background:#1c0a0a;border:1px solid #7f1d1d;border-radius:10px;padding:12px 16px;margin-bottom:12px;display:flex;align-items:center;gap:10px;font-size:13px;color:#fca5a5}
+.global-toggles{background:#141824;border:1px solid #1e2535;border-radius:14px;padding:20px;margin-bottom:20px}
+.global-label{font-size:11px;font-weight:700;color:#3b82f6;text-transform:uppercase;letter-spacing:.08em;margin-bottom:14px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:14px}
+.student-list-row{display:flex;align-items:center;padding:10px 14px;background:#0f1117;border-radius:10px;margin-bottom:8px;gap:12px}
+.disabled-notice{background:#1a1f2e;border:1px dashed #374151;border-radius:12px;padding:20px;text-align:center;color:#64748b;font-size:13px}
+.exam-overlay{position:fixed;inset:0;background:#0a0d14;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:999;gap:20px}
+.pin-overlay{position:fixed;inset:0;background:rgba(0,0,0,.85);display:flex;align-items:center;justify-content:center;z-index:1000}
+.pin-box{background:#141824;border:1px solid #1e2535;border-radius:16px;padding:32px;width:320px;text-align:center}
+.pin-input{width:100%;background:#0f1117;border:1px solid #1e2535;border-radius:8px;padding:12px 16px;font-size:18px;font-family:'DM Mono',monospace;color:#e2e8f0;text-align:center;letter-spacing:.25em;margin-bottom:16px;outline:none}
+.pin-input:focus{border-color:#3b82f6}
+.pin-error{color:#ef4444;font-size:12px;margin-bottom:12px}
+.summary-box{background:#0f1117;border-radius:10px;padding:16px;font-size:13px;line-height:1.8;color:#cbd5e1;border:1px solid #1e2535;white-space:pre-wrap;max-height:400px;overflow-y:auto}
+.chat-wrap{display:flex;flex-direction:column;height:calc(100vh - 88px);max-width:720px;margin:0 auto}
+.chat-head{background:#141824;border:1px solid #1e2535;border-radius:14px 14px 0 0;padding:14px 18px;display:flex;align-items:center;justify-content:space-between}
+.chat-msgs{flex:1;background:#0f1117;border-left:1px solid #1e2535;border-right:1px solid #1e2535;padding:16px;overflow-y:auto;display:flex;flex-direction:column;gap:12px}
+.msg{display:flex;flex-direction:column;gap:4px;max-width:84%}
+.msg.user{align-self:flex-end}
+.msg.ai{align-self:flex-start}
+.msg-bubble{padding:10px 14px;border-radius:14px;font-size:14px;line-height:1.65}
+.msg.user .msg-bubble{background:#3b82f6;color:#fff;border-bottom-right-radius:4px}
+.msg.ai .msg-bubble{background:#141824;color:#e2e8f0;border:1px solid #1e2535;border-bottom-left-radius:4px}
+.msg.ai .msg-bubble h1,.msg.ai .msg-bubble h2,.msg.ai .msg-bubble h3{font-size:14px;font-weight:600;margin:8px 0 4px}
+.msg.ai .msg-bubble strong{font-weight:600}
+.msg.ai .msg-bubble em{font-style:italic;color:#94a3b8}
+.msg.ai .msg-bubble ul,.msg.ai .msg-bubble ol{padding-left:18px;margin:6px 0}
+.msg.ai .msg-bubble li{margin-bottom:3px}
+.msg.ai .msg-bubble code{background:#0f1117;padding:1px 5px;border-radius:4px;font-family:'DM Mono',monospace;font-size:12px;color:#7dd3fc}
+.msg.ai .msg-bubble pre{background:#0f1117;padding:10px;border-radius:8px;overflow-x:auto;margin:8px 0}
+.msg.ai .msg-bubble pre code{background:none;padding:0}
+.msg.ai .msg-bubble p{margin-bottom:6px}.msg.ai .msg-bubble p:last-child{margin-bottom:0}
+.msg-meta{font-size:11px;color:#64748b}
+.thinking{display:flex;align-items:center;gap:8px;padding:10px 14px;background:#141824;border-radius:14px;border:1px solid #1e2535;border-bottom-left-radius:4px;color:#94a3b8;font-size:13px;align-self:flex-start}
+.spin{animation:spin .8s linear infinite;display:inline-block}
+@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+.chat-footer{background:#141824;border:1px solid #1e2535;border-top:none;border-radius:0 0 14px 14px;padding:12px 14px;display:flex;gap:8px;align-items:flex-end}
+.chat-input{flex:1;background:#0f1117;border:1px solid #1e2535;border-radius:10px;padding:10px 14px;font-size:14px;color:#e2e8f0;font-family:'DM Sans',sans-serif;resize:none;outline:none;min-height:42px;max-height:120px}
+.chat-input:focus{border-color:#3b82f6}
+.help-btn{background:#ef4444;color:#fff;border:none;border-radius:10px;padding:10px 14px;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;transition:all .15s}
+.help-btn:hover{background:#dc2626;transform:scale(1.02)}
+.model-pill{display:flex;background:#0f1117;border:1px solid #1e2535;border-radius:100px;padding:3px;gap:2px}
+.model-pill-btn{border:none;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:500;padding:5px 12px;border-radius:100px;transition:all .2s;background:transparent;color:#64748b;display:flex;align-items:center;gap:5px}
+.model-pill-btn.active{background:#141824;color:#e2e8f0;box-shadow:0 1px 4px rgba(0,0,0,.4)}
+::-webkit-scrollbar{width:4px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:#1e2535;border-radius:4px}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const {useState,useEffect,useRef,useCallback}=React;
+const CLAUDE_KEY='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';
+const ADMIN_PW='Peanut';
+const COLORS=['#3b82f6','#8b5cf6','#06b6d4','#f59e0b','#22c55e','#ec4899','#f97316','#14b8a6'];
+const DEF={essay:true,translation:true,math:true};
+
+function lsGet(k,fb){try{const v=localStorage.getItem(k);return v!==null?JSON.parse(v):fb;}catch{return fb;}}
+function lsSet(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch{}}
+function getDB(){return lsGet('edb',{teachers:[],classes:{}});}
+function saveDB(d){lsSet('edb',d);}
+function md(t){try{return{__html:marked.parse(t||'')};}catch{return{__html:t||''};}}
+
+function buildPrompt(caps,model){
+  const r=[];
+  if(!caps.essay)r.push('- Essay/Text Writing DISABLED. Refuse with: "Essay writing mode is disabled by your teacher."');
+  if(!caps.translation)r.push('- Translation DISABLED. Refuse with: "Translation mode is disabled by your teacher."');
+  if(!caps.math)r.push('- Math Solutions DISABLED. Refuse with: "Math solutions mode is disabled by your teacher."');
+  const b=r.length?'\n\nTEACHER RESTRICTIONS (enforce strictly):\n'+r.join('\n'):'\n\nAll features enabled.';
+  if(model==='zigg')return`You are "De Ziggmeister", a knowledgeable AI tutor. Answer anything: arithmetic, algebra, calculus, physics, chemistry, biology, history, geography, grammar, literature, languages, coding. Give structured step-by-step explanations. Use markdown (bold, lists, headers) for clarity.${b}`;
+  return`You are "Rocky Mountains", a fast AI tutor. Answer directly and briefly. Answer first, one tip max. Minimal markdown.${b}`;
+}
+
+async function callClaude(messages,system){
+  const res=await fetch('https://api.anthropic.com/v1/messages',{
+    method:'POST',
+    headers:{'Content-Type':'application/json','x-api-key':CLAUDE_KEY,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+    body:JSON.stringify({model:'claude-sonnet-4-5',max_tokens:1000,system,messages})
+  });
+  if(!res.ok){const e=await res.json().catch(()=>({}));throw new Error(e?.error?.message||'API error '+res.status);}
+  return(await res.json()).content?.[0]?.text||'No response.';
+}
+
+function App(){
+  const[screen,setScreenRaw]=useState(()=>{try{return sessionStorage.getItem('ss_screen')||'landing';}catch{return'landing';}});
+  const setScreen=s=>{setScreenRaw(s);try{sessionStorage.setItem('ss_screen',s);}catch{}};
+  const[teacher,setTeacherRaw]=useState(()=>{try{const v=sessionStorage.getItem('ss_teacher');return v?JSON.parse(v):null;}catch{return null;}});
+  const setTeacher=t=>{setTeacherRaw(t);try{sessionStorage.setItem('ss_teacher',JSON.stringify(t));}catch{}};
+  const[student,setStudentRaw]=useState(()=>{try{const v=sessionStorage.getItem('ss_student');return v?JSON.parse(v):null;}catch{return null;}});
+  const setStudent=s=>{setStudentRaw(s);try{sessionStorage.setItem('ss_student',JSON.stringify(s));}catch{}};
+
+  const[db,setDb]=useState(getDB);
+  const refresh=useCallback(()=>setDb(getDB()),[]);
+  useEffect(()=>{
+    const iv=setInterval(refresh,1000);
+    window.addEventListener('storage',refresh);
+    return()=>{clearInterval(iv);window.removeEventListener('storage',refresh);};
+  },[]);
+
+  const mut=fn=>{const d=getDB();fn(d);saveDB(d);setDb({...d});};
+
+  const[err,setErr]=useState('');
+  const[f1,setF1]=useState('');const[f2,setF2]=useState('');const[f3,setF3]=useState('');
+  const[apiHist,setApiHist]=useState([]);
+  const[msgs,setMsgs]=useState([]);
+  const[input,setInput]=useState('');
+  const[model,setModel]=useState('zigg');
+  const[thinking,setThinking]=useState(false);
+  const[chatErr,setChatErr]=useState('');
+  const[showPin,setShowPin]=useState(false);
+  const[pin,setPin]=useState('');
+  const[pinErr,setPinErr]=useState('');
+  const[summary,setSummary]=useState('');
+  const[sumLoad,setSumLoad]=useState(false);
+  const[sumErr,setSumErr]=useState('');
+  const[showSum,setShowSum]=useState(false);
+  const msgEnd=useRef(null);
+  useEffect(()=>{if(msgEnd.current)msgEnd.current.scrollIntoView({behavior:'smooth'});},[msgs,thinking]);
+
+  const getCls=tid=>db.classes[tid]||{students:[],toggles:{},help:{},paste:{},exam:false,online:{}};
+  const getCaps=(tid,sid)=>getCls(tid).toggles[sid]||{...DEF};
+
+  const loginTeacher=()=>{
+    const d=getDB();
+    const t=d.teachers.find(t=>t.name.toLowerCase()===f1.toLowerCase()&&t.password===f2);
+    if(t){setTeacher(t);setScreen('teacher');setErr('');setF1('');setF2('');}
+    else setErr('Wrong username or password.');
+  };
+
+  const loginStudent=()=>{
+    const d=getDB();
+    let found=null,tid=null;
+    for(const[k,cls]of Object.entries(d.classes)){
+      const s=(cls.students||[]).find(s=>s.name.toLowerCase()===f1.toLowerCase()&&s.password===f2);
+      if(s){found=s;tid=k;break;}
+    }
+    if(found){
+      setStudent({...found,teacherId:tid});
+      mut(d=>{const c=d.classes[tid];if(c){c.online=c.online||{};c.online[found.id]=true;}});
+      setScreen('student');setErr('');setF1('');setF2('');
+    }else setErr('Wrong username or password. Ask your teacher.');
+  };
+
+  const createTeacher=()=>{
+    if(f1!==ADMIN_PW){setErr('Wrong admin password.');return;}
+    if(!f2.trim()||!f3.trim()){setErr('Fill in name and password.');return;}
+    const d=getDB();
+    if(d.teachers.find(t=>t.name.toLowerCase()===f2.trim().toLowerCase())){setErr('Name already exists.');return;}
+    const id='t'+Date.now();
+    d.teachers.push({id,name:f2.trim(),password:f3.trim()});
+    d.classes[id]={students:[],toggles:{},help:{},paste:{},exam:false,online:{}};
+    saveDB(d);setDb({...d});
+    alert('Teacher "'+f2.trim()+'" created!');
+    setErr('');setF1('');setF2('');setF3('');
+  };
+
+  const addStudent=(name,pass)=>{
+    if(!name.trim()||!pass.trim())return;
+    const tid=teacher.id;
+    mut(d=>{
+      if(!d.classes[tid])d.classes[tid]={students:[],toggles:{},help:{},paste:{},exam:false,online:{}};
+      const id='s'+Date.now();
+      const color=COLORS[(d.classes[tid].students||[]).length%COLORS.length];
+      d.classes[tid].students.push({id,name:name.trim(),password:pass,color,avatar:name.trim()[0].toUpperCase()});
+      d.classes[tid].toggles[id]={...DEF};
+      d.classes[tid].help[id]=false;d.classes[tid].paste[id]=false;d.classes[tid].online[id]=false;
+    });
+  };
+
+  const removeStudent=sid=>mut(d=>{
+    const c=d.classes[teacher.id];if(!c)return;
+    c.students=c.students.filter(s=>s.id!==sid);
+    delete c.toggles[sid];delete c.help[sid];delete c.paste[sid];delete c.online[sid];
+  });
+
+  const setToggle=(sid,key,val)=>mut(d=>{
+    const c=d.classes[teacher.id];if(!c)return;
+    if(!c.toggles[sid])c.toggles[sid]={...DEF};
+    c.toggles[sid][key]=val;
+  });
+
+  const setGlobalToggle=(key,val)=>mut(d=>{
+    const c=d.classes[teacher.id];if(!c)return;
+    (c.students||[]).forEach(s=>{if(!c.toggles[s.id])c.toggles[s.id]={...DEF};c.toggles[s.id][key]=val;});
+  });
+
+  const genCode=()=>Math.random().toString(36).slice(2,8).toUpperCase();
+  const setExam=v=>mut(d=>{const c=d.classes[teacher.id];if(c){c.exam=v;if(v)c.examCode=genCode();}});
+  const regenCode=()=>mut(d=>{const c=d.classes[teacher.id];if(c)c.examCode=genCode();});
+  const clearHelp=sid=>mut(d=>{const c=d.classes[teacher.id];if(c)c.help[sid]=false;});
+  const clearPaste=sid=>mut(d=>{const c=d.classes[teacher.id];if(c)c.paste[sid]=false;});
+
+  const sendHelp=()=>{if(!student)return;mut(d=>{const c=d.classes[student.teacherId];if(c)c.help[student.id]=true;});};
+
+  const handlePaste=e=>{
+    const t=e.clipboardData.getData('text');
+    if(t.length>200&&student)mut(d=>{const c=d.classes[student.teacherId];if(c)c.paste[student.id]=true;});
+  };
+
+  const handleSend=useCallback(async()=>{
+    if(!input.trim()||thinking||!student)return;
+    const text=input.trim();setInput('');setChatErr('');
+    const caps=getCaps(student.teacherId,student.id);
+    const newHist=[...apiHist,{role:'user',content:text}];
+    setMsgs(p=>[...p,{role:'user',text,model}]);
+    setApiHist(newHist);setThinking(true);
+    const delay=model==='zigg'?new Promise(r=>setTimeout(r,2500)):Promise.resolve();
+    try{
+      const[reply]=await Promise.all([callClaude(newHist,buildPrompt(caps,model)),delay]);
+      setApiHist(p=>[...p,{role:'assistant',content:reply}]);
+      setMsgs(p=>[...p,{role:'ai',text:reply,model}]);
+    }catch(e){setChatErr('AI error: '+e.message);}
+    finally{setThinking(false);}
+  },[input,thinking,student,model,apiHist,db]);
+
+  const tryUnlock=()=>{
+    const tid=student?.teacherId||teacher?.id;
+    const d=getDB();
+    const cls=d.classes[tid];
+    if(cls&&pin.toUpperCase()===cls.examCode){
+      mut(d=>{if(d.classes[tid])d.classes[tid].exam=false;});
+      setShowPin(false);setPin('');setPinErr('');
+    }else setPinErr('Wrong code. Ask your teacher for the current code.');
+  };
+
+  const doSummary=async()=>{
+    const cls=getCls(teacher.id);
+    setSummary('');setSumErr('');setShowSum(true);setSumLoad(true);
+    const sections=(cls.students||[]).map(s=>{
+      const caps=cls.toggles[s.id]||DEF;
+      const disabled=Object.entries(caps).filter(([,v])=>!v).map(([k])=>k).join(', ')||'none';
+      return`Student: ${s.name}\nHelp pressed: ${cls.help[s.id]?'YES':'no'}\nPaste alert: ${cls.paste[s.id]?'YES':'no'}\nDisabled features: ${disabled}`;
+    }).join('\n\n---\n\n');
+    const prompt=`Generate a lesson summary for the teacher based on this real class session data. Use emoji headers: 📊 Overview, 📌 Per-Student Analysis, 🚨 Alerts, 💡 Recommendations. Be specific.\n\n${sections||'No students in class yet.'}`;
+    try{const t=await callClaude([{role:'user',content:prompt}],'You are a teaching assistant writing insightful lesson summaries.');setSummary(t);}
+    catch(e){setSumErr('Error: '+e.message);}
+    finally{setSumLoad(false);}
+  };
+
+  // LANDING
+  if(screen==='landing')return(
+    <div className="login-page">
+      <div className="login-logo"><div className="login-logo-icon">🛡️</div>EduAI-Shield</div>
+      <div style={{fontSize:13,color:'#64748b'}}>Controlled AI learning environment for schools</div>
+      <div className="login-cards">
+        <div className="login-card" onClick={()=>{setScreen('teacher-auth');setErr('');setF1('');setF2('');}}>
+          <div className="login-card-icon">👩‍🏫</div><div className="login-card-title">Teacher</div><div className="login-card-sub">Manage your class</div>
+        </div>
+        <div className="login-card" onClick={()=>{setScreen('student-auth');setErr('');setF1('');setF2('');}}>
+          <div className="login-card-icon">🎓</div><div className="login-card-title">Student</div><div className="login-card-sub">Join your class chat</div>
+        </div>
+        <div className="login-card" onClick={()=>{setScreen('admin');setErr('');setF1('');setF2('');setF3('');}}>
+          <div className="login-card-icon">⚙️</div><div className="login-card-title">Create Teacher</div><div className="login-card-sub">Admin only</div>
+        </div>
+      </div>
+    </div>
+  );
+
+  if(screen==='admin')return(
+    <div className="login-page">
+      <div className="login-logo"><div className="login-logo-icon">🛡️</div>EduAI-Shield</div>
+      <div className="auth-box">
+        <div className="auth-title">⚙️ Create Teacher Account</div>
+        <div className="auth-sub">Enter the admin password, then the new teacher's details.</div>
+        <input className="auth-input" type="password" placeholder="Admin password" value={f1} onChange={e=>setF1(e.target.value)}/>
+        <input className="auth-input" type="text" placeholder="Teacher name" value={f2} onChange={e=>setF2(e.target.value)}/>
+        <input className="auth-input" type="password" placeholder="Teacher password" value={f3} onChange={e=>setF3(e.target.value)} onKeyDown={e=>{if(e.key==='Enter')createTeacher();}}/>
+        {err&&<div className="auth-error">{err}</div>}
+        <button className="btn btn-primary" style={{width:'100%'}} onClick={createTeacher}>Create Teacher Account</button>
+        <button className="auth-back" onClick={()=>setScreen('landing')}>← Back</button>
+      </div>
+    </div>
+  );
+
+  if(screen==='teacher-auth')return(
+    <div className="login-page">
+      <div className="login-logo"><div className="login-logo-icon">🛡️</div>EduAI-Shield</div>
+      <div className="auth-box">
+        <div className="auth-title">👩‍🏫 Teacher Login</div>
+        <div className="auth-sub">Enter your teacher credentials.</div>
+        <input className="auth-input" type="text" placeholder="Username" value={f1} onChange={e=>setF1(e.target.value)} autoFocus/>
+        <input className="auth-input" type="password" placeholder="Password" value={f2} onChange={e=>setF2(e.target.value)} onKeyDown={e=>{if(e.key==='Enter')loginTeacher();}}/>
+        {err&&<div className="auth-error">{err}</div>}
+        <button className="btn btn-primary" style={{width:'100%'}} onClick={loginTeacher}>Login</button>
+        <button className="auth-back" onClick={()=>setScreen('landing')}>← Back</button>
+      </div>
+    </div>
+  );
+
+  if(screen==='student-auth')return(
+    <div className="login-page">
+      <div className="login-logo"><div className="login-logo-icon">🛡️</div>EduAI-Shield</div>
+      <div className="auth-box">
+        <div className="auth-title">🎓 Student Login</div>
+        <div className="auth-sub">Enter the username and password given by your teacher.</div>
+        <input className="auth-input" type="text" placeholder="Username" value={f1} onChange={e=>setF1(e.target.value)} autoFocus/>
+        <input className="auth-input" type="password" placeholder="Password" value={f2} onChange={e=>setF2(e.target.value)} onKeyDown={e=>{if(e.key==='Enter')loginStudent();}}/>
+        {err&&<div className="auth-error">{err}</div>}
+        <button className="btn btn-primary" style={{width:'100%'}} onClick={loginStudent}>Login</button>
+        <button className="auth-back" onClick={()=>setScreen('landing')}>← Back</button>
+      </div>
+    </div>
+  );
+
+  // TEACHER DASHBOARD
+  if(screen==='teacher'&&teacher){
+    const cls=getCls(teacher.id);
+    const students=cls.students||[];
+    const helpA=Object.entries(cls.help||{}).filter(([,v])=>v);
+    const pasteA=Object.entries(cls.paste||{}).filter(([,v])=>v);
+    const onlineCt=Object.values(cls.online||{}).filter(Boolean).length;
+    const gEssay=students.length===0||students.every(s=>(cls.toggles[s.id]||DEF).essay);
+    const gTrans=students.length===0||students.every(s=>(cls.toggles[s.id]||DEF).translation);
+    const gMath=students.length===0||students.every(s=>(cls.toggles[s.id]||DEF).math);
+    return <TeacherDash {...{teacher,cls,students,helpA,pasteA,onlineCt,gEssay,gTrans,gMath,summary,sumLoad,sumErr,showSum,setToggle,setGlobalToggle,clearHelp,clearPaste,setExam,regenCode,doSummary,addStudent,removeStudent,onLogout:()=>{setTeacher(null);setScreen('landing');try{sessionStorage.removeItem('ss_teacher');sessionStorage.removeItem('ss_screen');}catch{}}}}/>;
+  }
+
+  // STUDENT CHAT
+  if(screen==='student'&&student){
+    const cls=getCls(student.teacherId);
+    const caps=cls.toggles[student.id]||DEF;
+    const examMode=cls.exam||false;
+    const handleKey=e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();handleSend();}};
+    return(
+      <div className="app">
+        <div className="topbar">
+          <div className="logo"><div className="logo-icon">🛡️</div>EduAI-Shield</div>
+          <div style={{display:'flex',alignItems:'center',gap:10}}>
+            <span style={{width:28,height:28,borderRadius:'50%',background:student.color,display:'inline-flex',alignItems:'center',justifyContent:'center',fontSize:12,fontWeight:700,color:'#fff'}}>{student.avatar}</span>
+            <span style={{fontSize:13,fontWeight:500}}>{student.name}</span>
+          </div>
+        </div>
+        {examMode&&(
+          <div className="exam-overlay">
+            <div style={{fontSize:56}}>🔒</div>
+            <div style={{fontSize:26,fontWeight:600,color:'#ef4444'}}>Prüfungsmodus aktiv</div>
+            <div style={{fontSize:14,color:'#64748b'}}>Chat gesperrt. Bitte warte auf deinen Lehrer.</div>
+            <button className="btn btn-outline" onClick={()=>setShowPin(true)}>Exit Exam</button>
+          </div>
+        )}
+        {showPin&&(
+          <div className="pin-overlay">
+            <div className="pin-box">
+              <div style={{fontSize:16,fontWeight:600,marginBottom:8}}>🔐 Teacher Code Required</div>
+              <div style={{fontSize:13,color:'#64748b',marginBottom:20}}>Ask your teacher for the unlock code.</div>
+              <input className="pin-input" type="password" placeholder="Enter code" value={pin} onChange={e=>setPin(e.target.value)} onKeyDown={e=>{if(e.key==='Enter')tryUnlock();}} autoFocus/>
+              {pinErr&&<div className="pin-error">{pinErr}</div>}
+              <div style={{display:'flex',gap:8}}>
+                <button className="btn btn-primary" style={{flex:1}} onClick={tryUnlock}>Unlock</button>
+                <button className="btn btn-outline" style={{flex:1}} onClick={()=>{setShowPin(false);setPin('');}}>Cancel</button>
+              </div>
+            </div>
+          </div>
+        )}
+        <div className="main" style={{padding:'12px 20px'}}>
+          {chatErr&&<div style={{background:'#1c0a0a',border:'1px solid #7f1d1d',borderRadius:10,padding:'10px 14px',marginBottom:12,fontSize:13,color:'#fca5a5'}}>{chatErr}</div>}
+          <div className="chat-wrap">
+            <div className="chat-head">
+              <div>
+                <div style={{fontSize:14,fontWeight:600}}>{student.name}'s AI Chat</div>
+                <div style={{fontSize:11,color:'#64748b',marginTop:2}}>
+                  {!caps.essay&&<span style={{color:'#ef4444',marginRight:8}}>✗ Essay</span>}
+                  {!caps.translation&&<span style={{color:'#ef4444',marginRight:8}}>✗ Translation</span>}
+                  {!caps.math&&<span style={{color:'#ef4444',marginRight:8}}>✗ Math</span>}
+                  {caps.essay&&caps.translation&&caps.math&&<span style={{color:'#22c55e'}}>All features enabled</span>}
+                </div>
+              </div>
+              <div className="model-pill">
+                <button className={`model-pill-btn${model==='zigg'?' active':''}`} onClick={()=>setModel('zigg')}>🧠 Ziggmeister</button>
+                <button className={`model-pill-btn${model==='rocky'?' active':''}`} onClick={()=>setModel('rocky')}>⚡ Rocky</button>
+              </div>
+            </div>
+            <div className="chat-msgs">
+              {msgs.length===0&&<div style={{margin:'auto',textAlign:'center',color:'#374151'}}><div style={{fontSize:30,marginBottom:8}}>💬</div><div style={{fontSize:14,color:'#64748b'}}>Ask anything — maths, science, history, languages...</div></div>}
+              {msgs.map((m,i)=>(
+                <div key={i} className={`msg ${m.role}`}>
+                  {m.role==='ai'?<div className="msg-bubble" dangerouslySetInnerHTML={md(m.text)}/>:<div className="msg-bubble">{m.text}</div>}
+                  <div className="msg-meta">{m.role==='ai'?(m.model==='zigg'?'🧠 Ziggmeister':'⚡ Rocky Mountains'):'You'}</div>
+                </div>
+              ))}
+              {thinking&&<div className="thinking"><span className="spin">⚙️</span>{model==='zigg'?'Ziggmeister is thinking...':'Rocky is on it...'}</div>}
+              <div ref={msgEnd}/>
+            </div>
+            <div className="chat-footer">
+              <textarea className="chat-input" placeholder={thinking?'Waiting...':'Ask anything... (Enter to send)'} value={input} onChange={e=>setInput(e.target.value)} onKeyDown={handleKey} onPaste={handlePaste} rows={1} disabled={thinking}/>
+              <button className="btn btn-primary" onClick={handleSend} disabled={thinking||!input.trim()} style={{opacity:(thinking||!input.trim())?.5:1}}>Send</button>
+              <button className="help-btn" onClick={sendHelp}>🆘 Hilfe</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+  return null;
+}
+
+function TeacherDash({teacher,cls,students,helpA,pasteA,onlineCt,gEssay,gTrans,gMath,summary,sumLoad,sumErr,showSum,setToggle,setGlobalToggle,clearHelp,clearPaste,setExam,regenCode,doSummary,addStudent,removeStudent,onLogout}){
+  const[tab,setTab]=useState('class');
+  const[nn,setNn]=useState('');const[np,setNp]=useState('');
+  return(
+    <div className="app">
+      <div className="topbar">
+        <div className="logo"><div className="logo-icon">🛡️</div><span>EduAI-Shield</span><span style={{fontSize:12,color:'#64748b',marginLeft:6}}>— {teacher.name}'s Class</span></div>
+        <div style={{display:'flex',alignItems:'center',gap:10}}>
+          <span style={{fontSize:12,color:'#64748b'}}>🟢 {onlineCt} online</span>
+          <button className="btn btn-outline btn-sm" onClick={onLogout}>← Logout</button>
+        </div>
+      </div>
+      <div className="main">
+        <div className="section-header">
+          <div className="section-title">Teacher Dashboard</div>
+          <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
+            {cls.exam
+              ?<><button className="btn btn-success" onClick={()=>setExam(false)}>🔓 End Exam</button>
+                <div style={{background:'#141824',border:'1px solid #1e2535',borderRadius:10,padding:'6px 14px',display:'flex',alignItems:'center',gap:10}}>
+                  <span style={{fontSize:12,color:'#64748b'}}>Exit code:</span>
+                  <span style={{fontFamily:'DM Mono,monospace',fontSize:16,fontWeight:700,color:'#22c55e',letterSpacing:'.15em'}}>{cls.examCode||'—'}</span>
+                  <button className="btn btn-outline btn-sm" onClick={regenCode} title="Generate new code">🔄 New Code</button>
+                </div></>
+              :<button className="btn btn-danger" onClick={()=>setExam(true)}>🔒 Start Exam</button>}
+            <button className="btn btn-primary" onClick={doSummary} disabled={sumLoad}>{sumLoad?'⏳ Generating...':'✨ Lesson Summary'}</button>
+          </div>
+        </div>
+        {helpA.map(([sid])=>{const s=students.find(x=>x.id===sid);if(!s)return null;return(<div key={sid} className="alert-strip">🆘 <strong>{s.name}</strong> needs help!<button onClick={()=>clearHelp(sid)} style={{marginLeft:'auto',background:'none',border:'1px solid #7f1d1d',color:'#fca5a5',borderRadius:6,padding:'3px 10px',cursor:'pointer',fontSize:12}}>Dismiss</button></div>);})}
+        {pasteA.map(([sid])=>{const s=students.find(x=>x.id===sid);if(!s)return null;return(<div key={sid} className="alert-strip" style={{borderColor:'#78350f',background:'#1c1107'}}>⚠️ <strong style={{color:'#fcd34d'}}>{s.name}</strong><span style={{color:'#fcd34d'}}> paste detected!</span><button onClick={()=>clearPaste(sid)} style={{marginLeft:'auto',background:'none',border:'1px solid #78350f',color:'#fcd34d',borderRadius:6,padding:'3px 10px',cursor:'pointer',fontSize:12}}>Dismiss</button></div>);})}
+        <div className="tab-bar">
+          {[['class','👥 Class'],['accounts','🔑 Student Accounts'],['summary','📊 Summary']].map(([k,l])=>(
+            <button key={k} className={`tab-btn${tab===k?' active':''}`} onClick={()=>setTab(k)}>{l}</button>
+          ))}
+        </div>
+        {tab==='class'&&<>
+          <div className="global-toggles">
+            <div className="global-label">🌍 Global Class Toggles</div>
+            {[['essay','Essay / Text Writing','AI refuses to write essays if off',gEssay],['translation','Translation Mode','AI refuses to translate if off',gTrans],['math','Math Solutions',"AI won't give direct answers if off",gMath]].map(([k,label,sub,val])=>(
+              <div key={k} className="toggle-row-big">
+                <div><div className="toggle-desc">{label}</div><div className="toggle-sub">{sub}</div></div>
+                <label className="toggle"><input type="checkbox" checked={val} onChange={e=>setGlobalToggle(k,e.target.checked)}/><span className="slider"></span></label>
+              </div>
+            ))}
+          </div>
+          {students.length===0&&<div className="disabled-notice">No students yet. Go to "Student Accounts" to create logins.</div>}
+          <div className="grid">
+            {students.map(s=>{
+              const caps=cls.toggles[s.id]||DEF;
+              return(
+                <div key={s.id} className={`student-card${cls.help[s.id]?' help':''}`}>
+                  <div className="student-name">
+                    <span style={{width:26,height:26,borderRadius:'50%',background:s.color,display:'inline-flex',alignItems:'center',justifyContent:'center',fontSize:11,fontWeight:700,color:'#fff'}}>{s.avatar}</span>
+                    {s.name}
+                    {cls.online[s.id]&&<span className="badge badge-green">🟢</span>}
+                    {cls.help[s.id]&&<span className="badge badge-red">🆘</span>}
+                    {cls.paste[s.id]&&<span className="badge badge-yellow">⚠️</span>}
+                  </div>
+                  <div className="student-status">{cls.exam?'🔒 Exam':cls.online[s.id]?'Active':'Offline'}</div>
+                  {[['essay','Essay'],['translation','Translation'],['math','Math']].map(([k,l])=>(
+                    <div key={k} className="toggle-row">
+                      <span className="toggle-label">{l}</span>
+                      <label className="toggle"><input type="checkbox" checked={caps[k]} onChange={e=>setToggle(s.id,k,e.target.checked)}/><span className="slider"></span></label>
+                    </div>
+                  ))}
+                </div>
+              );
+            })}
+          </div>
+        </>}
+        {tab==='accounts'&&<div>
+          <div className="card" style={{marginBottom:16}}>
+            <div className="card-title">➕ Create Student Login</div>
+            <div style={{display:'flex',gap:10,flexWrap:'wrap'}}>
+              <input style={{flex:1,minWidth:120,background:'#0f1117',border:'1px solid #1e2535',borderRadius:8,padding:'9px 14px',fontSize:13,color:'#e2e8f0',fontFamily:'inherit',outline:'none'}} placeholder="Student name" value={nn} onChange={e=>setNn(e.target.value)}/>
+              <input style={{flex:1,minWidth:120,background:'#0f1117',border:'1px solid #1e2535',borderRadius:8,padding:'9px 14px',fontSize:13,color:'#e2e8f0',fontFamily:'inherit',outline:'none'}} placeholder="Password" value={np} onChange={e=>setNp(e.target.value)} onKeyDown={e=>{if(e.key==='Enter'){addStudent(nn,np);setNn('');setNp('');}}}/>
+              <button className="btn btn-primary" onClick={()=>{addStudent(nn,np);setNn('');setNp('');}}>Create</button>
+            </div>
+          </div>
+          <div className="card">
+            <div className="card-title">👥 All Students ({students.length})</div>
+            {students.length===0&&<div style={{color:'#374151',fontSize:13,textAlign:'center',padding:'16px 0'}}>No accounts yet.</div>}
+            {students.map(s=>(
+              <div key={s.id} className="student-list-row">
+                <span style={{width:32,height:32,borderRadius:'50%',background:s.color,display:'inline-flex',alignItems:'center',justifyContent:'center',fontSize:13,fontWeight:700,color:'#fff',flexShrink:0}}>{s.avatar}</span>
+                <div style={{flex:1}}>
+                  <div style={{fontSize:13,fontWeight:600}}>{s.name}</div>
+                  <div style={{fontSize:11,color:'#64748b'}}>Password: <span style={{fontFamily:'DM Mono,monospace',color:'#94a3b8'}}>{s.password}</span> · {cls.online[s.id]?<span style={{color:'#22c55e'}}>Online</span>:<span style={{color:'#374151'}}>Offline</span>}</div>
+                </div>
+                <button className="btn btn-danger btn-sm" onClick={()=>removeStudent(s.id)}>Remove</button>
+              </div>
+            ))}
+          </div>
+        </div>}
+        {tab==='summary'&&<div className="card">
+          <div className="card-title">📊 AI Lesson Summary</div>
+          {!showSum&&<div className="disabled-notice">Click "Lesson Summary" above to generate a real AI analysis of this session.</div>}
+          {showSum&&sumLoad&&<div style={{display:'flex',alignItems:'center',gap:10,color:'#64748b',fontSize:13,padding:'16px 0'}}><span className="spin" style={{fontSize:18}}>⚙️</span>Analysing session...</div>}
+          {showSum&&sumErr&&<div style={{color:'#ef4444',fontSize:13}}>{sumErr}</div>}
+          {showSum&&!sumLoad&&summary&&<div className="summary-box">{summary}</div>}
+        </div>}
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body>
+</html>
