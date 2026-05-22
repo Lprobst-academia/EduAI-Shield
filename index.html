@@ -140,31 +140,75 @@ firebase.initializeApp(firebaseConfig);
 const db=firebase.database();
 
 // ── Claude API ───────────────────────────────────────────────────
-const CLAUDE_KEY='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';
+let CLAUDE_KEY='';
+// Subscribe to key from Firebase so it updates live on all devices
+db.ref('config/apiKey').on('value',snap=>{CLAUDE_KEY=snap.val()||'';});
+async function loadApiKey(){
+  return new Promise(resolve=>{
+    db.ref('config/apiKey').once('value').then(snap=>{
+      CLAUDE_KEY=snap.val()||'';
+      resolve(CLAUDE_KEY);
+    }).catch(()=>resolve(''));
+  });
+}
 const ADMIN_PW='Peanut';
 const COLORS=['#3b82f6','#8b5cf6','#06b6d4','#f59e0b','#22c55e','#ec4899','#f97316','#14b8a6'];
-const DEF={essay:true,translation:true,math:true};
+const DEF={essay:true,translation:true,math:true,coding:true,summarize:true,definitions:true,spellcheck:true,hints:true,shortanswers:true,guiding:true,stepbystep:true};
+const LANGUAGES=['English','German','French','Spanish','Italian','Dutch'];
 
 function md(t){try{return{__html:marked.parse(t||'')};}catch{return{__html:t||''};}}
 
 function buildPrompt(caps,model){
   const r=[];
-  if(!caps.essay)r.push('- Essay/Text Writing DISABLED. Refuse: "Essay writing mode is disabled by your teacher."');
-  if(!caps.translation)r.push('- Translation DISABLED. Refuse: "Translation mode is disabled by your teacher."');
-  if(!caps.math)r.push('- Math Solutions DISABLED. Refuse: "Math solutions mode is disabled by your teacher."');
-  const b=r.length?'\n\nTEACHER RESTRICTIONS:\n'+r.join('\n'):'\n\nAll features enabled.';
-  if(model==='zigg')return`You are "De Ziggmeister", a knowledgeable AI tutor. Answer anything: arithmetic, algebra, calculus, physics, chemistry, biology, history, geography, grammar, literature, languages, coding. Give structured step-by-step explanations. Use markdown for clarity.${b}`;
-  return`You are "Rocky Mountains", a fast AI tutor. Answer directly and briefly. Answer first, one tip max. Minimal markdown.${b}`;
+  if(!caps.essay)r.push('- Essay/Text Writing DISABLED. If asked to write essays, paragraphs, stories or long text, refuse: "Essay writing mode is disabled by your teacher. I can only give tips!"');
+  if(!caps.translation)r.push('- Translation DISABLED. If asked to translate anything, refuse: "Translation mode is disabled by your teacher."');
+  if(!caps.math)r.push('- Math Solutions DISABLED. If asked to solve math or give numerical answers, refuse: "Math solutions mode is disabled by your teacher. I can guide your thinking!"');
+  if(!caps.coding)r.push('- Coding DISABLED. If asked to write, complete or debug code, refuse: "Coding mode is disabled by your teacher."');
+  if(!caps.summarize)r.push('- Summarizing DISABLED. If asked to summarize, condense or make notes from any text, refuse: "Summarizing mode is disabled by your teacher. Read it yourself!"');
+  if(!caps.definitions)r.push('- Definitions/Explanations DISABLED. If asked to define, explain or describe concepts, refuse: "Definition mode is disabled by your teacher."');
+  if(!caps.spellcheck)r.push('- Spell/Grammar Correction DISABLED. Never correct spelling or grammar mistakes in student messages. If asked to proofread or fix writing, refuse: "Spell check is disabled by your teacher."');
+  if(!caps.hints)r.push('- Hint Mode ACTIVE. Give ONLY one small hint per message. Never give full explanations or answers. After each hint say: "Try it yourself first, then ask again if you need another hint."');
+  if(!caps.shortanswers)r.push('- Short Answers ONLY. Keep every response under 3 sentences maximum. No long explanations, no lists, no headers.');
+  if(!caps.guiding)r.push('- Guiding Questions Mode ACTIVE. NEVER give direct answers. Instead ONLY respond with questions that guide the student to think for themselves. Example: instead of answering "Paris", ask "What country is known as the City of Light?"');
+  if(!caps.stepbystep)r.push('- Step-by-Step Mode ACTIVE. NEVER reveal the full solution or next steps upfront. Give ONLY the very first step. Then wait for the student to respond before giving the next step. Say: "Complete this step first, then ask me for the next one." Repeat for every step.');
+  const lang=caps.language||'Any';
+  if(lang&&lang!=='Any')r.push('- Language Lock ACTIVE: You MUST respond ONLY in '+lang+'. Regardless of what language the student writes in, your reply must ALWAYS be in '+lang+' only. This is mandatory.');
+  const b=r.length?'\n\nTEACHER RESTRICTIONS (enforce all strictly, no exceptions):\n'+r.join('\n'):'\n\nAll features enabled.';
+  const identity='CRITICAL IDENTITY RULE: You are NOT Claude and NOT made by Anthropic. If anyone asks who you are, your name, or who created you, never mention Claude or Anthropic. ';
+  if(model==='zigg')return`You are "De Ziggmeister", a knowledgeable AI tutor built into EduAI-Shield. Answer anything: arithmetic, algebra, calculus, physics, chemistry, biology, history, geography, grammar, literature, languages, coding. Give structured step-by-step explanations. Use markdown for clarity. ${identity}Always say: "I am De Ziggmeister, your AI tutor in EduAI-Shield!"${b}`;
+  return`You are "Rocky Mountains", a fast AI tutor built into EduAI-Shield. Answer directly and briefly. Answer first, one tip max. Minimal markdown. ${identity}Always say: "I am Rocky Mountains, your AI tutor in EduAI-Shield!"${b}`;
 }
 
 async function callClaude(messages,system){
+  if(!CLAUDE_KEY) await loadApiKey();
+  if(!CLAUDE_KEY) throw new Error('No API key set. Ask your teacher to add the API key in the Admin panel.');
   const res=await fetch('https://api.anthropic.com/v1/messages',{
     method:'POST',
     headers:{'Content-Type':'application/json','x-api-key':CLAUDE_KEY,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
-    body:JSON.stringify({model:'claude-sonnet-4-5',max_tokens:1000,system,messages})
+    body:JSON.stringify({model:'claude-sonnet-4-5',max_tokens:1500,system,messages})
   });
   if(!res.ok){const e=await res.json().catch(()=>({}));throw new Error(e?.error?.message||'API error '+res.status);}
   return(await res.json()).content?.[0]?.text||'No response.';
+}
+
+// Convert file to base64
+async function fileToBase64(file){
+  return new Promise((res,rej)=>{
+    const r=new FileReader();
+    r.onload=()=>res(r.result.split(',')[1]);
+    r.onerror=rej;
+    r.readAsDataURL(file);
+  });
+}
+
+// Read text file content
+async function fileToText(file){
+  return new Promise((res,rej)=>{
+    const r=new FileReader();
+    r.onload=()=>res(r.result);
+    r.onerror=rej;
+    r.readAsText(file);
+  });
 }
 
 // ── Firebase helpers ─────────────────────────────────────────────
@@ -177,12 +221,16 @@ const fbOn=(path,cb)=>{const ref=db.ref(path);ref.on('value',s=>cb(s.val()));ret
 function genCode(){return Math.random().toString(36).slice(2,8).toUpperCase();}
 
 function App(){
-  const[screen,setScreenRaw]=useState(()=>{try{return sessionStorage.getItem('ss_screen')||'landing';}catch{return'landing';}});
-  const setScreen=s=>{setScreenRaw(s);try{sessionStorage.setItem('ss_screen',s);}catch{}};
-  const[teacher,setTeacherRaw]=useState(()=>{try{const v=sessionStorage.getItem('ss_teacher');return v?JSON.parse(v):null;}catch{return null;}});
-  const setTeacher=t=>{setTeacherRaw(t);try{sessionStorage.setItem('ss_teacher',JSON.stringify(t));}catch{}};
-  const[student,setStudentRaw]=useState(()=>{try{const v=sessionStorage.getItem('ss_student');return v?JSON.parse(v):null;}catch{return null;}});
-  const setStudent=s=>{setStudentRaw(s);try{sessionStorage.setItem('ss_student',JSON.stringify(s));}catch{}};
+  // Use localStorage so session survives tab close/reopen on tablet
+  // Each device gets a unique ID so teacher+student on same device don't clash
+  const DEVICE_ID=()=>{let id=localStorage.getItem('eduai_device_id');if(!id){id='dev_'+Math.random().toString(36).slice(2);localStorage.setItem('eduai_device_id',id);}return id;};
+  const did=DEVICE_ID();
+  const[screen,setScreenRaw]=useState(()=>{try{return localStorage.getItem(did+'_screen')||'landing';}catch{return'landing';}});
+  const setScreen=s=>{setScreenRaw(s);try{localStorage.setItem(did+'_screen',s);}catch{}};
+  const[teacher,setTeacherRaw]=useState(()=>{try{const v=localStorage.getItem(did+'_teacher');return v?JSON.parse(v):null;}catch{return null;}});
+  const setTeacher=t=>{setTeacherRaw(t);try{localStorage.setItem(did+'_teacher',JSON.stringify(t));}catch{}};
+  const[student,setStudentRaw]=useState(()=>{try{const v=localStorage.getItem(did+'_student');return v?JSON.parse(v):null;}catch{return null;}});
+  const setStudent=s=>{setStudentRaw(s);try{localStorage.setItem(did+'_student',JSON.stringify(s));}catch{}};
 
   // Live Firebase data for teacher's class
   const[cls,setCls]=useState(null);
@@ -199,21 +247,77 @@ function App(){
   const[studentCls,setStudentCls]=useState(null);
   useEffect(()=>{
     if(!student)return;
-    const unsub=fbOn('classes/'+student.teacherId,data=>{setStudentCls(data);});
+    const unsub=fbOn('classes/'+student.teacherId,data=>{
+      setStudentCls(data);
+      // Auto-logout if student was removed from class
+      if(data&&data.students){
+        const stillExists=Object.values(data.students).some(s=>s.id===student.id);
+        if(!stillExists){
+          const did2=localStorage.getItem('eduai_device_id')||'';
+          localStorage.removeItem(did2+'_screen');
+          localStorage.removeItem(did2+'_student');
+          alert('You have been removed from the class by your teacher.');
+          window.location.reload();
+        }
+      } else if(data&&!data.students){
+        // students node empty/deleted = removed
+        const did2=localStorage.getItem('eduai_device_id')||'';
+        localStorage.removeItem(did2+'_screen');
+        localStorage.removeItem(did2+'_student');
+        alert('You have been removed from the class by your teacher.');
+        window.location.reload();
+      }
+    });
+    // Auto-set offline when tab closes using Firebase onDisconnect
+    const onlineRef=db.ref('classes/'+student.teacherId+'/online/'+student.id);
+    onlineRef.onDisconnect().set(false);
+    onlineRef.set(true);
     setDbReady(true);
-    return unsub;
+    return()=>{
+      unsub();
+      onlineRef.onDisconnect().cancel();
+    };
   },[student?.teacherId]);
 
   useEffect(()=>{if(teacher&&cls!==null)setDbReady(true);},[cls]);
 
   const[err,setErr]=useState('');
-  const[f1,setF1]=useState('');const[f2,setF2]=useState('');const[f3,setF3]=useState('');
-  const[apiHist,setApiHist]=useState([]);
-  const[msgs,setMsgs]=useState([]);
+  const[f1,setF1]=useState('');const[f2,setF2]=useState('');const[f3,setF3]=useState('');const[f4,setF4]=useState('');
+  // Multi-chat system
+  const[chats,setChats]=useState([{id:'c1',name:'Chat 1',msgs:[],apiHist:[],model:'zigg'}]);
+  const[activeChatId,setActiveChatId]=useState('c1');
   const[input,setInput]=useState('');
-  const[model,setModel]=useState('zigg');
+  const[attachments,setAttachments]=useState([]); // [{name,type,data,mediaType,preview}]
   const[thinking,setThinking]=useState(false);
   const[chatErr,setChatErr]=useState('');
+  const[devMode,setDevMode]=useState(false);
+  const fileInputRef=useRef(null);
+
+  const activeChat=chats.find(ch=>ch.id===activeChatId)||chats[0];
+  const msgs=activeChat?.msgs||[];
+  const apiHist=activeChat?.apiHist||[];
+  const model=activeChat?.model||'zigg';
+
+  const updateChat=(id,fn)=>setChats(p=>p.map(ch=>ch.id===id?{...ch,...fn(ch)}:ch));
+  const setModel=m=>updateChat(activeChatId,ch=>({model:m}));
+  const setApiHist=fn=>updateChat(activeChatId,ch=>({apiHist:typeof fn==='function'?fn(ch.apiHist):fn}));
+  const setMsgs=fn=>updateChat(activeChatId,ch=>({msgs:typeof fn==='function'?fn(ch.msgs):fn}));
+
+  const addNewChat=()=>{
+    const id='c'+Date.now();
+    const num=chats.length+1;
+    setChats(p=>[...p,{id,name:'Chat '+num,msgs:[],apiHist:[],model:'zigg'}]);
+    setActiveChatId(id);
+  };
+
+  const deleteChat=id=>{
+    if(chats.length===1)return;
+    const remaining=chats.filter(ch=>ch.id!==id);
+    setChats(remaining);
+    if(activeChatId===id)setActiveChatId(remaining[0].id);
+  };
+
+  const renameChat=(id,name)=>setChats(p=>p.map(ch=>ch.id===id?{...ch,name}:ch));
   const[showPin,setShowPin]=useState(false);
   const[pin,setPin]=useState('');
   const[pinErr,setPinErr]=useState('');
@@ -250,6 +354,18 @@ function App(){
     }catch(e){setErr('Error: '+e.message);}
   };
 
+  const saveApiKey=async(key)=>{
+    if(f1!==ADMIN_PW){setErr('Wrong admin password.');return;}
+    if(!key.trim()){setErr('Enter the API key.');return;}
+    try{
+      await fbSet('config/apiKey',key.trim());
+      CLAUDE_KEY=key.trim();
+      setF4('');
+      alert('API key saved! All devices will use it automatically.');
+      setErr('');
+    }catch(e){setErr('Error saving key: '+e.message);}
+  };
+
   const createTeacher=async()=>{
     if(f1!==ADMIN_PW){setErr('Wrong admin password.');return;}
     if(!f2.trim()||!f3.trim()){setErr('Fill in name and password.');return;}
@@ -258,7 +374,8 @@ function App(){
       if(Object.values(teachers).find(t=>t.name.toLowerCase()===f2.trim().toLowerCase())){setErr('Name already exists.');return;}
       const id='t'+Date.now();
       await fbSet('teachers/'+id,{id,name:f2.trim(),password:f3.trim()});
-      await fbSet('classes/'+id,{students:{},toggles:{},help:{},paste:{},exam:false,examStudents:{},examCode:'',online:{}});
+      const initToggles={essay:true,translation:true,math:true,coding:true,summarize:true,definitions:true,spellcheck:true,hints:true,shortanswers:true,guiding:true,stepbystep:true,language:'Any'};
+      await fbSet('classes/'+id,{students:{},toggles:{},globalToggles:{...initToggles},help:{},paste:{},exam:false,examStudents:{},examCode:'',online:{},chatLocked:{}});
       alert('Teacher "'+f2.trim()+'" created!');
       setErr('');setF1('');setF2('');setF3('');
     }catch(e){setErr('Error: '+e.message);}
@@ -271,7 +388,8 @@ function App(){
     const color=COLORS[Object.keys(students).length%COLORS.length];
     const newStudent={id,name:name.trim(),password:pass,color,avatar:name.trim()[0].toUpperCase()};
     await fbSet('classes/'+teacher.id+'/students/'+id,newStudent);
-    await fbSet('classes/'+teacher.id+'/toggles/'+id,{...DEF});
+    await fbSet('classes/'+teacher.id+'/toggles/'+id,{essay:true,translation:true,math:true,coding:true,summarize:true,definitions:true,spellcheck:true,hints:true,shortanswers:true,guiding:true,stepbystep:true,language:'Any'});
+    await fbSet('classes/'+teacher.id+'/chatLocked/'+id,false);
     await fbSet('classes/'+teacher.id+'/help/'+id,false);
     await fbSet('classes/'+teacher.id+'/paste/'+id,false);
     await fbSet('classes/'+teacher.id+'/online/'+id,false);
@@ -285,6 +403,7 @@ function App(){
     await db.ref(base+'/help/'+sid).remove();
     await db.ref(base+'/paste/'+sid).remove();
     await db.ref(base+'/online/'+sid).remove();
+    await db.ref(base+'/chatLocked/'+sid).remove();
   };
 
   const setToggle=async(sid,key,val)=>{
@@ -295,6 +414,9 @@ function App(){
   const setGlobalToggle=async(key,val)=>{
     if(!teacher||!cls)return;
     const updates={};
+    // Update the independent global toggle state
+    updates['classes/'+teacher.id+'/globalToggles/'+key]=val;
+    // Also apply to all students
     Object.keys(cls.students||{}).forEach(sid=>{updates['classes/'+teacher.id+'/toggles/'+sid+'/'+key]=val;});
     await db.ref().update(updates);
   };
@@ -328,6 +450,11 @@ function App(){
   const clearHelp=sid=>fbSet('classes/'+teacher.id+'/help/'+sid,false);
   const clearPaste=sid=>fbSet('classes/'+teacher.id+'/paste/'+sid,false);
 
+  const setChatLocked=async(sid,val)=>{
+    if(!teacher)return;
+    await fbSet('classes/'+teacher.id+'/chatLocked/'+sid,val);
+  };
+
   const sendHelp=async()=>{
     if(!student)return;
     await fbSet('classes/'+student.teacherId+'/help/'+student.id,true);
@@ -341,6 +468,17 @@ function App(){
   const tryUnlock=async()=>{
     const tid=student?.teacherId||teacher?.id;
     const sid=student?.id||null;
+    // Dev mode master code
+    if(devMode&&pin==='1234'){
+      if(sid){
+        await fbSet('classes/'+tid+'/examStudents/'+sid,false);
+        const examStudents=await fbGet('classes/'+tid+'/examStudents')||{};
+        const anyLeft=Object.values(examStudents).some(Boolean);
+        if(!anyLeft)await fbSet('classes/'+tid+'/exam',false);
+      }
+      setShowPin(false);setPin('');setPinErr('');
+      return;
+    }
     const code=await fbGet('classes/'+tid+'/examCode');
     if(pin.toUpperCase()===code){
       if(sid){
@@ -362,21 +500,74 @@ function App(){
     }else setPinErr('Wrong code. Ask your teacher.');
   };
 
+  const handleFileSelect=async(e)=>{
+    const files=Array.from(e.target.files);
+    if(!files.length)return;
+    const newAtts=[];
+    for(const file of files){
+      const isImage=file.type.startsWith('image/');
+      const isText=file.type.startsWith('text/')||file.name.endsWith('.txt')||file.name.endsWith('.md')||file.name.endsWith('.csv')||file.name.endsWith('.js')||file.name.endsWith('.py')||file.name.endsWith('.html')||file.name.endsWith('.json');
+      const isPdf=file.type==='application/pdf';
+      if(isImage){
+        const data=await fileToBase64(file);
+        const preview=URL.createObjectURL(file);
+        newAtts.push({name:file.name,type:'image',data,mediaType:file.type,preview});
+      }else if(isText){
+        const text=await fileToText(file);
+        newAtts.push({name:file.name,type:'text',data:text,preview:null});
+      }else if(isPdf){
+        const data=await fileToBase64(file);
+        newAtts.push({name:file.name,type:'pdf',data,mediaType:'application/pdf',preview:null});
+      }else{
+        alert('Unsupported file type. Please use images, PDFs, or text files.');
+      }
+    }
+    setAttachments(p=>[...p,...newAtts]);
+    e.target.value='';
+  };
+
+  const removeAttachment=i=>setAttachments(p=>p.filter((_,idx)=>idx!==i));
+
   const handleSend=useCallback(async()=>{
     if(!input.trim()||thinking||!student||!studentCls)return;
     const text=input.trim();setInput('');setChatErr('');
-    const caps=(studentCls.toggles||{})[student.id]||DEF;
-    const newHist=[...apiHist,{role:'user',content:text}];
-    setMsgs(p=>[...p,{role:'user',text,model}]);
-    setApiHist(newHist);setThinking(true);
-    const delay=model==='zigg'?new Promise(r=>setTimeout(r,2500)):Promise.resolve();
+    const currentModel=activeChat?.model||'zigg';
+    const currentApiHist=activeChat?.apiHist||[];
+    const chatId=activeChatId;
+    // Secret dev mode command
+    if(text==='//devmode on'){
+      setDevMode(true);
+      updateChat(chatId,ch=>({msgs:[...ch.msgs,{role:'user',text:'//devmode on',model:currentModel},{role:'ai',text:'🔓 **Developer mode activated.** All teacher restrictions are bypassed for this session. Only you can see this message.',model:currentModel}]}));
+      return;
+    }
+    if(text==='//devmode off'){
+      setDevMode(false);
+      updateChat(chatId,ch=>({msgs:[...ch.msgs,{role:'user',text:'//devmode off',model:currentModel},{role:'ai',text:'🔒 Developer mode deactivated. Normal restrictions apply.',model:currentModel}]}));
+      return;
+    }
+    const caps=devMode?{essay:true,translation:true,math:true,coding:true,summarize:true,definitions:true,spellcheck:true,hints:true,shortanswers:true,guiding:true,stepbystep:true,language:'Any'}:(studentCls.toggles||{})[student.id]||DEF;
+    // Build content array with text + attachments
+    const currentAtts=[...attachments];
+    setAttachments([]);
+    const contentParts=[];
+    for(const att of currentAtts){
+      if(att.type==='image') contentParts.push({type:'image',source:{type:'base64',media_type:att.mediaType,data:att.data}});
+      else if(att.type==='pdf') contentParts.push({type:'document',source:{type:'base64',media_type:'application/pdf',data:att.data}});
+      else if(att.type==='text') contentParts.push({type:'text',text:'File: '+att.name+'\n\n'+att.data});
+    }
+    if(text) contentParts.push({type:'text',text});
+    const msgContent=contentParts.length===1&&contentParts[0].type==='text'?text:contentParts;
+    const newHist=[...currentApiHist,{role:'user',content:msgContent}];
+    const attNames=currentAtts.map(a=>a.name);
+    updateChat(chatId,ch=>({msgs:[...ch.msgs,{role:'user',text,model:currentModel,attachments:attNames}],apiHist:newHist}));
+    setThinking(true);
+    const delay=currentModel==='zigg'?new Promise(r=>setTimeout(r,2500)):Promise.resolve();
     try{
-      const[reply]=await Promise.all([callClaude(newHist,buildPrompt(caps,model)),delay]);
-      setApiHist(p=>[...p,{role:'assistant',content:reply}]);
-      setMsgs(p=>[...p,{role:'ai',text:reply,model}]);
+      const[reply]=await Promise.all([callClaude(newHist,buildPrompt(caps,currentModel)),delay]);
+      updateChat(chatId,ch=>({msgs:[...ch.msgs,{role:'ai',text:reply,model:currentModel}],apiHist:[...ch.apiHist,{role:'assistant',content:reply}]}));
     }catch(e){setChatErr('AI error: '+e.message);}
     finally{setThinking(false);}
-  },[input,thinking,student,model,apiHist,studentCls]);
+  },[input,thinking,student,studentCls,activeChat,activeChatId,devMode,attachments]);
 
   const doSummary=async()=>{
     if(!teacher||!cls)return;
@@ -387,8 +578,8 @@ function App(){
       const disabled=Object.entries(caps).filter(([,v])=>!v).map(([k])=>k).join(', ')||'none';
       return`Student: ${s.name}\nHelp pressed: ${(cls.help||{})[s.id]?'YES':'no'}\nPaste alert: ${(cls.paste||{})[s.id]?'YES':'no'}\nDisabled: ${disabled}`;
     }).join('\n\n---\n\n');
-    const prompt=`Generate a lesson summary. Use 📊 Overview, 📌 Per-Student, 🚨 Alerts, 💡 Recommendations.\n\n${sections||'No students yet.'}`;
-    try{const t=await callClaude([{role:'user',content:prompt}],'You are a teaching assistant writing lesson summaries.');setSummary(t);}
+    const prompt=`Generate a detailed lesson summary for the teacher. Use these emoji sections: 📊 Overview, 📌 Per-Student Analysis, 🚨 Alerts, 💡 Recommendations. Be specific and factual. Do NOT add any overall disclaimer, closing note, or generic advice at the end. End after the Recommendations section.\n\n${sections||'No students yet.'}`;
+    try{const t=await callClaude([{role:'user',content:prompt}],'You are a teaching assistant writing concise lesson summaries. Never add generic disclaimers or closing remarks. Stop after the final recommendation.');setSummary(t);}
     catch(e){setSumErr('Error: '+e.message);}
     finally{setSumLoad(false);}
   };
@@ -421,13 +612,21 @@ function App(){
     <div className="login-page">
       <div className="login-logo"><div className="login-logo-icon">🛡️</div>EduAI-Shield</div>
       <div className="auth-box">
-        <div className="auth-title">⚙️ Create Teacher Account</div>
-        <div className="auth-sub">Enter admin password, then the new teacher's details.</div>
+        <div className="auth-title">⚙️ Admin Panel</div>
+        <div className="auth-sub">Enter admin password to manage the system.</div>
         <input className="auth-input" type="password" placeholder="Admin password" value={f1} onChange={e=>setF1(e.target.value)}/>
-        <input className="auth-input" type="text" placeholder="Teacher name" value={f2} onChange={e=>setF2(e.target.value)}/>
-        <input className="auth-input" type="password" placeholder="Teacher password" value={f3} onChange={e=>setF3(e.target.value)} onKeyDown={e=>{if(e.key==='Enter')createTeacher();}}/>
         {err&&<div className="auth-error">{err}</div>}
-        <button className="btn btn-primary" style={{width:'100%'}} onClick={createTeacher}>Create Teacher Account</button>
+        <div style={{borderTop:'1px solid #1e2535',paddingTop:16,marginBottom:16}}>
+          <div style={{fontSize:12,color:'#64748b',marginBottom:8,fontWeight:600,textTransform:'uppercase',letterSpacing:'.05em'}}>🔑 Update Claude API Key</div>
+          <input className="auth-input" type="password" placeholder="sk-ant-api03-..." value={f4} onChange={e=>setF4(e.target.value)}/>
+          <button className="btn btn-primary" style={{width:'100%',marginBottom:12}} onClick={()=>saveApiKey(f4)}>Save API Key</button>
+        </div>
+        <div style={{borderTop:'1px solid #1e2535',paddingTop:16}}>
+          <div style={{fontSize:12,color:'#64748b',marginBottom:8,fontWeight:600,textTransform:'uppercase',letterSpacing:'.05em'}}>👩‍🏫 Create Teacher Account</div>
+          <input className="auth-input" type="text" placeholder="Teacher name" value={f2} onChange={e=>setF2(e.target.value)}/>
+          <input className="auth-input" type="password" placeholder="Teacher password" value={f3} onChange={e=>setF3(e.target.value)} onKeyDown={e=>{if(e.key==='Enter')createTeacher();}}/>
+          <button className="btn btn-primary" style={{width:'100%'}} onClick={createTeacher}>Create Teacher Account</button>
+        </div>
         <button className="auth-back" onClick={()=>setScreen('landing')}>← Back</button>
       </div>
     </div>
@@ -469,16 +668,26 @@ function App(){
     const helpA=Object.entries(cls.help||{}).filter(([,v])=>v);
     const pasteA=Object.entries(cls.paste||{}).filter(([,v])=>v);
     const onlineCt=Object.values(cls.online||{}).filter(Boolean).length;
-    const gEssay=students.length===0||students.every(s=>(cls.toggles||{})[s.id]?.essay!==false);
-    const gTrans=students.length===0||students.every(s=>(cls.toggles||{})[s.id]?.translation!==false);
-    const gMath=students.length===0||students.every(s=>(cls.toggles||{})[s.id]?.math!==false);
-    return<TeacherDash {...{teacher,cls,students,helpA,pasteA,onlineCt,gEssay,gTrans,gMath,summary,sumLoad,sumErr,showSum,setToggle,setGlobalToggle,clearHelp,clearPaste,startExam,endExam,regenCode,doSummary,addStudent,removeStudent,onLogout:()=>{setTeacher(null);setScreen('landing');try{sessionStorage.removeItem('ss_teacher');sessionStorage.removeItem('ss_screen');}catch{}}}}/>;
+    const gt=cls.globalToggles||{essay:true,translation:true,math:true,coding:true,summarize:true,definitions:true,spellcheck:true,hints:true,shortanswers:true,guiding:true};
+    const gEssay=gt.essay!==false;
+    const gTrans=gt.translation!==false;
+    const gMath=gt.math!==false;
+    const gCoding=gt.coding!==false;
+    const gSum=gt.summarize!==false;
+    const gDef=gt.definitions!==false;
+    const gSpell=gt.spellcheck!==false;
+    const gHints=gt.hints!==false;
+    const gShort=gt.shortanswers!==false;
+    const gGuiding=gt.guiding!==false;
+    const gStep=gt.stepbystep!==false;
+    return<TeacherDash {...{teacher,cls,students,helpA,pasteA,onlineCt,gEssay,gTrans,gMath,gCoding,gSum,gDef,gSpell,gHints,gShort,gGuiding,gStep,summary,sumLoad,sumErr,showSum,setToggle,setGlobalToggle,clearHelp,clearPaste,setChatLocked,startExam,endExam,regenCode,doSummary,addStudent,removeStudent,onLogout:()=>{setTeacher(null);setScreen('landing');try{const d=DEVICE_ID();localStorage.removeItem(d+'_teacher');localStorage.removeItem(d+'_screen');}catch{}}}}/>;
   }
 
   // STUDENT CHAT
   if(screen==='student'&&student&&studentCls){
     const caps=(studentCls.toggles||{})[student.id]||DEF;
     const examMode=!!(studentCls.examStudents||{})[student.id];
+    const chatLocked=devMode?false:!!(studentCls.chatLocked||{})[student.id];
     const handleKey=e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();handleSend();}};
     return(
       <div className="app">
@@ -487,6 +696,13 @@ function App(){
           <div style={{display:'flex',alignItems:'center',gap:10}}>
             <span style={{width:28,height:28,borderRadius:'50%',background:student.color,display:'inline-flex',alignItems:'center',justifyContent:'center',fontSize:12,fontWeight:700,color:'#fff'}}>{student.avatar}</span>
             <span style={{fontSize:13,fontWeight:500}}>{student.name}</span>
+            {devMode&&<span style={{background:'#7c3aed',color:'#fff',fontSize:10,fontWeight:700,padding:'2px 8px',borderRadius:20}}>🔓 DEV</span>}
+            {devMode&&<button className="btn btn-outline btn-sm" onClick={()=>{
+              const did2=localStorage.getItem('eduai_device_id')||'';
+              localStorage.removeItem(did2+'_screen');
+              localStorage.removeItem(did2+'_student');
+              setStudentRaw(null);setScreen('landing');
+            }}>← Logout</button>}
           </div>
         </div>
         {examMode&&(
@@ -513,15 +729,28 @@ function App(){
         )}
         <div className="main" style={{padding:'12px 20px'}}>
           {chatErr&&<div style={{background:'#1c0a0a',border:'1px solid #7f1d1d',borderRadius:10,padding:'10px 14px',marginBottom:12,fontSize:13,color:'#fca5a5'}}>{chatErr}</div>}
+          {/* Chat tabs */}
+          <div style={{display:'flex',gap:4,marginBottom:8,alignItems:'center',overflowX:'auto',paddingBottom:4}}>
+            {chats.map(ch=>(
+              <div key={ch.id} style={{display:'flex',alignItems:'center',gap:0,background:activeChatId===ch.id?'#3b82f6':'#141824',border:'1px solid '+(activeChatId===ch.id?'#3b82f6':'#1e2535'),borderRadius:8,overflow:'hidden',flexShrink:0}}>
+                <button onClick={()=>setActiveChatId(ch.id)} style={{background:'transparent',border:'none',color:activeChatId===ch.id?'#fff':'#94a3b8',padding:'5px 12px',cursor:'pointer',fontSize:12,fontFamily:'DM Sans,sans-serif',fontWeight:500}}>{ch.name}</button>
+                {chats.length>1&&<button onClick={()=>deleteChat(ch.id)} style={{background:'transparent',border:'none',color:activeChatId===ch.id?'rgba(255,255,255,.6)':'#374151',padding:'5px 8px 5px 0',cursor:'pointer',fontSize:12,lineHeight:1}}>✕</button>}
+              </div>
+            ))}
+            <button onClick={addNewChat} style={{background:'#141824',border:'1px dashed #1e2535',borderRadius:8,color:'#64748b',padding:'5px 12px',cursor:'pointer',fontSize:12,fontFamily:'DM Sans,sans-serif',flexShrink:0}} title="New chat">+ New</button>
+          </div>
           <div className="chat-wrap">
             <div className="chat-head">
               <div>
-                <div style={{fontSize:14,fontWeight:600}}>{student.name}'s AI Chat</div>
+                <div style={{fontSize:14,fontWeight:600}}>{student.name} — {activeChat?.name}</div>
                 <div style={{fontSize:11,color:'#64748b',marginTop:2}}>
                   {!caps.essay&&<span style={{color:'#ef4444',marginRight:8}}>✗ Essay</span>}
                   {!caps.translation&&<span style={{color:'#ef4444',marginRight:8}}>✗ Translation</span>}
                   {!caps.math&&<span style={{color:'#ef4444',marginRight:8}}>✗ Math</span>}
-                  {caps.essay&&caps.translation&&caps.math&&<span style={{color:'#22c55e'}}>All features enabled</span>}
+                  {!caps.coding&&<span style={{color:'#ef4444',marginRight:8}}>✗ Coding</span>}
+                  {!caps.summarize&&<span style={{color:'#ef4444',marginRight:8}}>✗ Summarize</span>}
+                  {!caps.definitions&&<span style={{color:'#ef4444',marginRight:8}}>✗ Definitions</span>}
+                  {caps.essay&&caps.translation&&caps.math&&caps.coding&&caps.summarize&&caps.definitions&&<span style={{color:'#22c55e'}}>All features enabled</span>}
                 </div>
               </div>
               <div className="model-pill">
@@ -530,19 +759,66 @@ function App(){
               </div>
             </div>
             <div className="chat-msgs">
-              {msgs.length===0&&<div style={{margin:'auto',textAlign:'center',color:'#374151'}}><div style={{fontSize:30,marginBottom:8}}>💬</div><div style={{fontSize:14,color:'#64748b'}}>Ask anything — maths, science, history, languages...</div></div>}
+              {msgs.length===0&&(
+                <div style={{margin:'auto',textAlign:'center',maxWidth:400}}>
+                  {model==='zigg'?(
+                    <div>
+                      <div style={{fontSize:40,marginBottom:12}}>🧠</div>
+                      <div style={{fontSize:17,fontWeight:600,color:'#e2e8f0',marginBottom:6}}>De Ziggmeister</div>
+                      <div style={{fontSize:12,color:'#8b5cf6',background:'#3b0764',display:'inline-block',padding:'3px 12px',borderRadius:20,marginBottom:12,fontWeight:600}}>Thinking Mode</div>
+                      <div style={{fontSize:13,color:'#64748b',lineHeight:1.6}}>Deep, structured answers with step-by-step explanations. Ask anything — maths, science, history, languages...</div>
+                    </div>
+                  ):(
+                    <div>
+                      <div style={{fontSize:40,marginBottom:12}}>⚡</div>
+                      <div style={{fontSize:17,fontWeight:600,color:'#e2e8f0',marginBottom:6}}>Rocky Mountains</div>
+                      <div style={{fontSize:12,color:'#4ade80',background:'#052e16',display:'inline-block',padding:'3px 12px',borderRadius:20,marginBottom:12,fontWeight:600}}>Fast Mode</div>
+                      <div style={{fontSize:13,color:'#64748b',lineHeight:1.6}}>Short, sharp, direct answers. No fluff. Ask anything and get straight to the point.</div>
+                    </div>
+                  )}
+                </div>
+              )}
               {msgs.map((m,i)=>(
                 <div key={i} className={`msg ${m.role}`}>
-                  {m.role==='ai'?<div className="msg-bubble" dangerouslySetInnerHTML={md(m.text)}/>:<div className="msg-bubble">{m.text}</div>}
+                  {m.role==='ai'?<div className="msg-bubble" dangerouslySetInnerHTML={md(m.text)}/>:(
+                    <div className="msg-bubble">
+                      {m.attachments&&m.attachments.length>0&&(
+                        <div style={{marginBottom:m.text?8:0,display:'flex',flexWrap:'wrap',gap:4}}>
+                          {m.attachments.map((name,j)=>(
+                            <span key={j} style={{background:'rgba(255,255,255,.15)',borderRadius:6,padding:'2px 8px',fontSize:11,display:'flex',alignItems:'center',gap:4}}>
+                              {name.match(/\.(jpg|jpeg|png|gif|webp)$/i)?'🖼️':name.endsWith('.pdf')?'📄':'📝'} {name}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                      {m.text}
+                    </div>
+                  )}
                   <div className="msg-meta">{m.role==='ai'?(m.model==='zigg'?'🧠 Ziggmeister':'⚡ Rocky Mountains'):'You'}</div>
                 </div>
               ))}
               {thinking&&<div className="thinking"><span className="spin">⚙️</span>{model==='zigg'?'Ziggmeister is thinking...':'Rocky is on it...'}</div>}
               <div ref={msgEnd}/>
             </div>
+            {/* Attachment previews */}
+            {attachments.length>0&&(
+              <div style={{background:'#141824',borderLeft:'1px solid #1e2535',borderRight:'1px solid #1e2535',padding:'8px 14px',display:'flex',gap:8,flexWrap:'wrap'}}>
+                {attachments.map((att,i)=>(
+                  <div key={i} style={{display:'flex',alignItems:'center',gap:6,background:'#0f1117',border:'1px solid #1e2535',borderRadius:8,padding:'5px 10px',fontSize:12,color:'#94a3b8'}}>
+                    {att.type==='image'&&att.preview&&<img src={att.preview} alt="" style={{width:24,height:24,objectFit:'cover',borderRadius:4}}/>}
+                    {att.type==='pdf'&&<span>📄</span>}
+                    {att.type==='text'&&<span>📝</span>}
+                    <span style={{maxWidth:100,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{att.name}</span>
+                    <button onClick={()=>removeAttachment(i)} style={{background:'none',border:'none',color:'#64748b',cursor:'pointer',fontSize:14,padding:'0 2px',lineHeight:1}}>✕</button>
+                  </div>
+                ))}
+              </div>
+            )}
             <div className="chat-footer">
-              <textarea className="chat-input" placeholder={thinking?'Waiting...':'Ask anything... (Enter to send)'} value={input} onChange={e=>setInput(e.target.value)} onKeyDown={handleKey} onPaste={handlePaste} rows={1} disabled={thinking}/>
-              <button className="btn btn-primary" onClick={handleSend} disabled={thinking||!input.trim()} style={{opacity:(thinking||!input.trim())?.5:1}}>Send</button>
+              <input ref={fileInputRef} type="file" multiple accept="image/*,.pdf,.txt,.md,.csv,.js,.py,.html,.json" style={{display:'none'}} onChange={handleFileSelect}/>
+              <button onClick={()=>fileInputRef.current?.click()} disabled={chatLocked} title="Attach file or image" style={{background:'#1a1f2e',border:'1px solid #1e2535',borderRadius:10,padding:'10px 12px',cursor:'pointer',fontSize:16,color:'#64748b',flexShrink:0,transition:'all .15s'}} onMouseOver={e=>e.target.style.color='#3b82f6'} onMouseOut={e=>e.target.style.color='#64748b'}>📎</button>
+              <textarea className="chat-input" placeholder={chatLocked?'Your chat has been locked by your teacher.':thinking?'Waiting...':'Ask anything... (Enter to send)'} value={input} onChange={e=>setInput(e.target.value)} onKeyDown={handleKey} onPaste={handlePaste} rows={1} disabled={thinking||chatLocked} style={{opacity:chatLocked?.6:1}}/>
+              <button className="btn btn-primary" onClick={handleSend} disabled={thinking||(!input.trim()&&attachments.length===0)||chatLocked} style={{opacity:(thinking||(!input.trim()&&attachments.length===0)||chatLocked)?.5:1}}>Send</button>
               <button className="help-btn" onClick={sendHelp}>🆘 Hilfe</button>
             </div>
           </div>
@@ -553,9 +829,102 @@ function App(){
   return null;
 }
 
-function TeacherDash({teacher,cls,students,helpA,pasteA,onlineCt,gEssay,gTrans,gMath,summary,sumLoad,sumErr,showSum,setToggle,setGlobalToggle,clearHelp,clearPaste,startExam,endExam,regenCode,doSummary,addStudent,removeStudent,onLogout}){
+function TeacherDash({teacher,cls,students,helpA,pasteA,onlineCt,gEssay,gTrans,gMath,gCoding,gSum,gDef,gSpell,gHints,gShort,gGuiding,gStep,summary,sumLoad,sumErr,showSum,setToggle,setGlobalToggle,clearHelp,clearPaste,setChatLocked,startExam,endExam,regenCode,doSummary,addStudent,removeStudent,onLogout}){
   const[tab,setTab]=useState('class');
   const[nn,setNn]=useState('');const[np,setNp]=useState('');
+
+  const cardStyles=`
+    @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap');
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'DM Sans',sans-serif;background:#f0f4ff;display:flex;align-items:center;justify-content:center;min-height:100vh;padding:32px}
+    .card{background:#fff;border-radius:20px;width:340px;overflow:hidden;box-shadow:0 8px 40px rgba(59,130,246,.15),0 2px 8px rgba(0,0,0,.08)}
+    .card-header{background:linear-gradient(135deg,#1e3a8a 0%,#3b82f6 50%,#6366f1 100%);padding:28px 28px 36px;text-align:center;position:relative}
+    .header-logo{display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:20px}
+    .header-logo-icon{width:32px;height:32px;background:rgba(255,255,255,.2);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px;backdrop-filter:blur(4px)}
+    .header-logo-text{font-size:15px;font-weight:700;color:#fff;letter-spacing:-.3px}
+    .avatar-ring{width:76px;height:76px;border-radius:50%;border:3px solid rgba(255,255,255,.4);display:flex;align-items:center;justify-content:center;margin:0 auto 12px;background:rgba(255,255,255,.15)}
+    .avatar-inner{width:64px;height:64px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:700;color:#fff}
+    .student-name{font-size:22px;font-weight:700;color:#fff;margin-bottom:3px;letter-spacing:-.3px}
+    .class-label{font-size:12px;color:rgba(255,255,255,.7);font-weight:500}
+    .card-body{padding:24px 28px 28px}
+    .field{margin-bottom:16px}
+    .field-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#94a3b8;margin-bottom:6px;display:flex;align-items:center;gap:5px}
+    .field-value{font-family:'DM Mono',monospace;font-size:15px;font-weight:500;color:#0f172a;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:11px 14px;letter-spacing:.04em}
+    .url-field{font-family:'DM Mono',monospace;font-size:11px;color:#3b82f6;background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:10px 14px;word-break:break-all;line-height:1.5}
+    .card-footer{background:#f8fafc;border-top:1px solid #e2e8f0;padding:12px 28px;display:flex;align-items:center;gap:8px}
+    .footer-icon{font-size:14px}
+    .footer-text{font-size:11px;color:#94a3b8;line-height:1.4}
+    @media print{body{background:#fff;padding:0}@page{margin:0;size:A5 portrait}.card{box-shadow:none;border:1px solid #e2e8f0}}
+  `;
+
+  const buildCard=(s,teacherName)=>`
+    <div class="card">
+      <div class="card-header">
+        <div class="header-logo">
+          <div class="header-logo-icon">🛡️</div>
+          <div class="header-logo-text">EduAI-Shield</div>
+        </div>
+        <div class="avatar-ring">
+          <div class="avatar-inner" style="background:${s.color}">${s.avatar}</div>
+        </div>
+        <div class="student-name">${s.name}</div>
+        <div class="class-label">${teacherName}'s Class</div>
+      </div>
+      <div class="card-body">
+        <div class="field">
+          <div class="field-label">👤 Username</div>
+          <div class="field-value">${s.name}</div>
+        </div>
+        <div class="field">
+          <div class="field-label">🔑 Password</div>
+          <div class="field-value">${s.password}</div>
+        </div>
+        <div class="field" style="margin-bottom:0">
+          <div class="field-label">🌐 Login URL</div>
+          <div class="url-field">${window.location.origin}</div>
+        </div>
+      </div>
+      <div class="card-footer">
+        <div class="footer-icon">🔒</div>
+        <div class="footer-text">Keep this card safe and do not share your password with others.</div>
+      </div>
+    </div>
+  `;
+
+  const printLogin=(s)=>{
+    const win=window.open('','_blank','width=480,height=680');
+    win.document.write(`<!DOCTYPE html><html><head><title>Login Card - ${s.name}</title><style>${cardStyles}</style></head><body>${buildCard(s,teacher.name)}<script>window.onload=()=>setTimeout(()=>window.print(),800);<\/script></body></html>`);
+    win.document.close();
+  };
+
+  const printAllLogins=()=>{
+    const win=window.open('','_blank');
+    const allCards=students.map(s=>buildCard(s,teacher.name)).join('');
+    win.document.write(`<!DOCTYPE html><html><head><title>Login Cards - ${teacher.name}'s Class</title><style>
+      @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap');
+      *{box-sizing:border-box;margin:0;padding:0}
+      body{font-family:'DM Sans',sans-serif;background:#f0f4ff;padding:32px}
+      .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:24px}
+      .card{background:#fff;border-radius:20px;overflow:hidden;box-shadow:0 4px 20px rgba(59,130,246,.12);break-inside:avoid}
+      .card-header{background:linear-gradient(135deg,#1e3a8a 0%,#3b82f6 50%,#6366f1 100%);padding:22px 24px 28px;text-align:center}
+      .header-logo{display:flex;align-items:center;justify-content:center;gap:7px;margin-bottom:16px}
+      .header-logo-icon{width:28px;height:28px;background:rgba(255,255,255,.2);border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:14px}
+      .header-logo-text{font-size:13px;font-weight:700;color:#fff}
+      .avatar-ring{width:64px;height:64px;border-radius:50%;border:3px solid rgba(255,255,255,.4);display:flex;align-items:center;justify-content:center;margin:0 auto 10px;background:rgba(255,255,255,.15)}
+      .avatar-inner{width:54px;height:54px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:700;color:#fff}
+      .student-name{font-size:18px;font-weight:700;color:#fff;margin-bottom:2px}
+      .class-label{font-size:11px;color:rgba(255,255,255,.7)}
+      .card-body{padding:18px 22px 22px}
+      .field{margin-bottom:12px}
+      .field-label{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#94a3b8;margin-bottom:5px}
+      .field-value{font-family:'DM Mono',monospace;font-size:13px;font-weight:500;color:#0f172a;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:9px 12px}
+      .url-field{font-family:'DM Mono',monospace;font-size:10px;color:#3b82f6;background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:8px 12px;word-break:break-all}
+      .card-footer{background:#f8fafc;border-top:1px solid #e2e8f0;padding:10px 22px;display:flex;align-items:center;gap:6px}
+      .footer-text{font-size:10px;color:#94a3b8}
+      @media print{body{background:#fff;padding:16px}@page{margin:1cm}}
+    </style></head><body><div class="grid">${allCards}</div><script>window.onload=()=>setTimeout(()=>window.print(),800);<\/script></body></html>`);
+    win.document.close();
+  };
   return(
     <div className="app">
       <div className="topbar">
@@ -593,7 +962,7 @@ function TeacherDash({teacher,cls,students,helpA,pasteA,onlineCt,gEssay,gTrans,g
         {tab==='class'&&<>
           <div className="global-toggles">
             <div className="global-label">🌍 Global Class Toggles</div>
-            {[['essay','Essay / Text Writing','AI refuses to write essays if off',gEssay],['translation','Translation Mode','AI refuses to translate if off',gTrans],['math','Math Solutions',"AI won't give direct answers if off",gMath]].map(([k,label,sub,val])=>(
+            {[['essay','Essay / Text Writing','AI refuses to write essays if off',gEssay],['translation','Translation Mode','AI refuses to translate if off',gTrans],['math','Math Solutions','AI will not give direct math answers if off',gMath],['coding','Coding','AI refuses to write or debug code if off',gCoding],['summarize','Summarize / Notes','AI refuses to summarize texts if off',gSum],['definitions','Definitions / Explanations','AI refuses to explain concepts if off',gDef],['spellcheck','Spell Check','AI will not correct spelling or grammar if off',gSpell],['hints','Hints Only Mode','AI gives only one hint at a time if off',gHints],['shortanswers','Short Answers Only','AI keeps responses under 3 sentences if off',gShort],['guiding','Guiding Questions Mode','AI only asks questions, never gives answers if off',gGuiding],['stepbystep','Step-by-Step Mode','AI reveals only one step at a time if off',gStep]].map(([k,label,sub,val])=>(
               <div key={k} className="toggle-row-big">
                 <div><div className="toggle-desc">{label}</div><div className="toggle-sub">{sub}</div></div>
                 <label className="toggle"><input type="checkbox" checked={!!val} onChange={e=>setGlobalToggle(k,e.target.checked)}/><span className="slider"></span></label>
@@ -611,16 +980,37 @@ function TeacherDash({teacher,cls,students,helpA,pasteA,onlineCt,gEssay,gTrans,g
                     <span style={{width:26,height:26,borderRadius:'50%',background:s.color,display:'inline-flex',alignItems:'center',justifyContent:'center',fontSize:11,fontWeight:700,color:'#fff'}}>{s.avatar}</span>
                     {s.name}
                     {(cls.online||{})[s.id]&&<span className="badge badge-green">🟢</span>}
+                    {(cls.chatLocked||{})[s.id]&&<span className="badge" style={{background:'#1e2535',color:'#94a3b8'}}>🔒</span>}
+                    {(cls.toggles||{})[s.id]?.language&&(cls.toggles||{})[s.id]?.language!=='Any'&&<span className="badge" style={{background:'#1e3a5f',color:'#60a5fa'}}>🌐 {(cls.toggles||{})[s.id]?.language.slice(0,2).toUpperCase()}</span>}
                     {(cls.help||{})[s.id]&&<span className="badge badge-red">🆘</span>}
                     {(cls.paste||{})[s.id]&&<span className="badge badge-yellow">⚠️</span>}
                   </div>
                   <div className="student-status">{inExam?'🔒 Exam':(cls.online||{})[s.id]?'Active':'Offline'}</div>
-                  {[['essay','Essay'],['translation','Translation'],['math','Math']].map(([k,l])=>(
+                  {[['essay','Essay'],['translation','Translation'],['math','Math'],['coding','Coding'],['summarize','Summarize'],['definitions','Definitions'],['spellcheck','Spell Check'],['hints','Hints Only'],['shortanswers','Short Answers'],['guiding','Guiding Questions'],['stepbystep','Step-by-Step']].map(([k,l])=>(
                     <div key={k} className="toggle-row">
                       <span className="toggle-label">{l}</span>
                       <label className="toggle"><input type="checkbox" checked={caps[k]!==false} onChange={e=>setToggle(s.id,k,e.target.checked)}/><span className="slider"></span></label>
                     </div>
                   ))}
+                  <div style={{marginTop:8,paddingTop:8,borderTop:'1px solid #1e2535'}}>
+                    <div style={{fontSize:11,color:'#64748b',marginBottom:6,fontWeight:600,textTransform:'uppercase',letterSpacing:'.05em'}}>🌐 Language Lock</div>
+                    <div style={{display:'flex',flexWrap:'wrap',gap:4}}>
+                      {['Any','EN','DE','FR','ES','IT','NL'].map((l,i)=>{
+                        const full=['Any','English','German','French','Spanish','Italian','Dutch'][i];
+                        const active=(caps.language||'Any')===full;
+                        return(
+                          <button key={l} onClick={()=>setToggle(s.id,'language',full)}
+                            style={{padding:'3px 8px',borderRadius:6,border:'1px solid '+(active?'#3b82f6':'#1e2535'),background:active?'#1d3d6b':'transparent',color:active?'#60a5fa':'#64748b',fontSize:11,cursor:'pointer',fontFamily:'DM Sans,sans-serif',fontWeight:active?600:400,transition:'all .15s'}}>
+                            {l}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                  <div className="toggle-row" style={{marginTop:6,paddingTop:6,borderTop:'1px solid #1e2535'}}>
+                    <span className="toggle-label" style={{color:(cls.chatLocked||{})[s.id]?'#ef4444':'#94a3b8'}}>🔒 Lock Chat</span>
+                    <label className="toggle"><input type="checkbox" checked={!!(cls.chatLocked||{})[s.id]} onChange={e=>setChatLocked(s.id,e.target.checked)}/><span className="slider"></span></label>
+                  </div>
                 </div>
               );
             })}
@@ -636,7 +1026,10 @@ function TeacherDash({teacher,cls,students,helpA,pasteA,onlineCt,gEssay,gTrans,g
             </div>
           </div>
           <div className="card">
-            <div className="card-title">👥 All Students ({students.length})</div>
+            <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:16}}>
+              <div className="card-title" style={{marginBottom:0}}>👥 All Students ({students.length})</div>
+              {students.length>0&&<button className="btn btn-outline btn-sm" onClick={printAllLogins} style={{borderColor:'#3b82f6',color:'#3b82f6'}}>🖨️ Print All</button>}
+            </div>
             {students.length===0&&<div style={{color:'#374151',fontSize:13,textAlign:'center',padding:'16px 0'}}>No accounts yet.</div>}
             {students.map(s=>(
               <div key={s.id} className="student-list-row">
@@ -645,6 +1038,7 @@ function TeacherDash({teacher,cls,students,helpA,pasteA,onlineCt,gEssay,gTrans,g
                   <div style={{fontSize:13,fontWeight:600}}>{s.name}</div>
                   <div style={{fontSize:11,color:'#64748b'}}>Password: <span style={{fontFamily:'DM Mono,monospace',color:'#94a3b8'}}>{s.password}</span> · {(cls.online||{})[s.id]?<span style={{color:'#22c55e'}}>Online</span>:<span style={{color:'#374151'}}>Offline</span>}</div>
                 </div>
+                <button className="btn btn-outline btn-sm" onClick={()=>printLogin(s)} style={{borderColor:'#3b82f6',color:'#3b82f6'}}>🖨️ Print</button>
                 <button className="btn btn-danger btn-sm" onClick={()=>removeStudent(s.id)}>Remove</button>
               </div>
             ))}
