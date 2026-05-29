@@ -76,5 +76,5 @@ README.md         ← This file
 
 ## Author
 
-Built by **Sigma (Linus Probst)** as a school project.  
+Built by a Academia Student as a school project.  
 EduAI-Shield — Controlled AI for Classrooms.
