@@ -56,41 +56,6 @@ EduAI-Shield gives teachers full control over how students use AI — enabling p
 
 ---
 
-## Setup
-
-### 1. Firebase
-1. Create a project at [firebase.google.com](https://firebase.google.com)
-2. Enable **Realtime Database** (test mode)
-3. Register a web app and copy the config
-4. Replace the `firebaseConfig` object in `index.html`
-
-### 2. Claude API Key
-1. Get a key at [console.anthropic.com](https://console.anthropic.com)
-2. Open the app → click **Admin** → enter admin password → paste key → **Save API Key**
-3. The key is stored in Firebase — all devices use it automatically
-
-### 3. Create a Teacher Account
-1. Open the app → click **Admin**
-2. Enter admin password: `Peanut`
-3. Fill in teacher name and password → **Create Teacher Account**
-
-### 4. Deploy
-Upload `index.html` to GitHub Pages or drag it into [netlify.com/drop](https://app.netlify.com/drop).
-
----
-
-## Passwords & Codes
-
-| What | Value |
-|------|-------|
-| Admin password | `Peanut` |
-| Exam exit code | Generated randomly per session (shown on teacher dashboard) |
-| Developer mode | Type `//devmode on` in student chat |
-| Dev exam exit | Enter `1234` when in developer mode |
-
-> **Security note:** The admin password and dev mode command should be kept private. Do not share with students.
-
----
 
 ## Project Structure
 
