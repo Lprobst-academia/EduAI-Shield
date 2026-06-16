@@ -951,96 +951,27 @@ function TeacherDash({teacher,cls,students,helpA,pasteA,onlineCt,gEssay,gTrans,g
   const[tab,setTab]=useState('class');
   const[nn,setNn]=useState('');const[np,setNp]=useState('');
 
-  const cardStyles=`
-    @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap');
-    *{box-sizing:border-box;margin:0;padding:0}
-    body{font-family:'DM Sans',sans-serif;background:#f0f4ff;display:flex;align-items:center;justify-content:center;min-height:100vh;padding:32px}
-    .card{background:#fff;border-radius:20px;width:340px;overflow:hidden;box-shadow:0 8px 40px rgba(59,130,246,.15),0 2px 8px rgba(0,0,0,.08)}
-    .card-header{background:linear-gradient(135deg,#1e3a8a 0%,#3b82f6 50%,#6366f1 100%);padding:28px 28px 36px;text-align:center;position:relative}
-    .header-logo{display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:20px}
-    .header-logo-icon{width:32px;height:32px;background:rgba(255,255,255,.2);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px;backdrop-filter:blur(4px)}
-    .header-logo-text{font-size:15px;font-weight:700;color:#fff;letter-spacing:-.3px}
-    .avatar-ring{width:76px;height:76px;border-radius:50%;border:3px solid rgba(255,255,255,.4);display:flex;align-items:center;justify-content:center;margin:0 auto 12px;background:rgba(255,255,255,.15)}
-    .avatar-inner{width:64px;height:64px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:700;color:#fff}
-    .student-name{font-size:22px;font-weight:700;color:#fff;margin-bottom:3px;letter-spacing:-.3px}
-    .class-label{font-size:12px;color:rgba(255,255,255,.7);font-weight:500}
-    .card-body{padding:24px 28px 28px}
-    .field{margin-bottom:16px}
-    .field-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#94a3b8;margin-bottom:6px;display:flex;align-items:center;gap:5px}
-    .field-value{font-family:'DM Mono',monospace;font-size:15px;font-weight:500;color:#0f172a;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:11px 14px;letter-spacing:.04em}
-    .url-field{font-family:'DM Mono',monospace;font-size:11px;color:#3b82f6;background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:10px 14px;word-break:break-all;line-height:1.5}
-    .card-footer{background:#f8fafc;border-top:1px solid #e2e8f0;padding:12px 28px;display:flex;align-items:center;gap:8px}
-    .footer-icon{font-size:14px}
-    .footer-text{font-size:11px;color:#94a3b8;line-height:1.4}
-    @media print{body{background:#fff;padding:0}@page{margin:0;size:A5 portrait}.card{box-shadow:none;border:1px solid #e2e8f0}}
-  `;
+  const cardStyles='   *{box-sizing:border-box;margin:0;padding:0}   body{font-family:\'DM Sans\',sans-serif;background:#f0f4ff;display:flex;align-items:center;justify-content:center;min-height:100vh;padding:32px}   .card{background:#fff;border-radius:20px;width:340px;overflow:hidden;box-shadow:0 8px 40px rgba(59,130,246,.15),0 2px 8px rgba(0,0,0,.08)}   .card-header{background:linear-gradient(135deg,#1e3a8a 0%,#3b82f6 50%,#6366f1 100%);padding:28px 28px 36px;text-align:center;position:relative}   .header-logo{display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:20px}   .header-logo-icon{width:32px;height:32px;background:rgba(255,255,255,.2);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px;backdrop-filter:blur(4px)}   .header-logo-text{font-size:15px;font-weight:700;color:#fff;letter-spacing:-.3px}   .avatar-ring{width:76px;height:76px;border-radius:50%;border:3px solid rgba(255,255,255,.4);display:flex;align-items:center;justify-content:center;margin:0 auto 12px;background:rgba(255,255,255,.15)}   .avatar-inner{width:64px;height:64px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:700;color:#fff}   .student-name{font-size:22px;font-weight:700;color:#fff;margin-bottom:3px;letter-spacing:-.3px}   .class-label{font-size:12px;color:rgba(255,255,255,.7);font-weight:500}   .card-body{padding:24px 28px 28px}   .field{margin-bottom:16px}   .field-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#94a3b8;margin-bottom:6px;display:flex;align-items:center;gap:5px}   .field-value{font-family:\'DM Mono\',monospace;font-size:15px;font-weight:500;color:#0f172a;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:11px 14px;letter-spacing:.04em}   .url-field{font-family:\'DM Mono\',monospace;font-size:11px;color:#3b82f6;background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:10px 14px;word-break:break-all;line-height:1.5}   .card-footer{background:#f8fafc;border-top:1px solid #e2e8f0;padding:12px 28px;display:flex;align-items:center;gap:8px}   .footer-icon{font-size:14px}   .footer-text{font-size:11px;color:#94a3b8;line-height:1.4}   @media print{body{background:#fff;padding:0}@page{margin:0;size:A5 portrait}.card{box-shadow:none;border:1px solid #e2e8f0}}  ';
 
-  const buildCard=(s,teacherName)=>`
-    <div class="card">
-      <div class="card-header">
-        <div class="header-logo">
-          <div class="header-logo-icon">🛡️</div>
-          <div class="header-logo-text">EduAI-Shield</div>
-        </div>
-        <div class="avatar-ring">
-          <div class="avatar-inner" style="background:${s.color}">${s.avatar}</div>
-        </div>
-        <div class="student-name">${s.name}</div>
-        <div class="class-label">${teacherName}'s Class</div>
-      </div>
-      <div class="card-body">
-        <div class="field">
-          <div class="field-label">👤 Username</div>
-          <div class="field-value">${s.name}</div>
-        </div>
-        <div class="field">
-          <div class="field-label">🔑 Password</div>
-          <div class="field-value">${s.password}</div>
-        </div>
-        <div class="field" style="margin-bottom:0">
-          <div class="field-label"> Login URL</div>
-          <div class="url-field">${window.location.origin}</div>
-        </div>
-      </div>
-      <div class="card-footer">
-        <div class="footer-icon"></div>
-        <div class="footer-text">Keep this card safe and do not share your password with others.</div>
-      </div>
-    </div>
-  `;
+
+  const buildCard=(s,teacherName)=>'<div class="card"><div class="card-header"><div class="header-logo"><div class="header-logo-icon">S</div><div class="header-logo-text">EduAI-Shield</div></div><div class="avatar-ring"><div class="avatar-inner" style="background:'+s.color+'">'+s.avatar+'</div></div><div class="student-name">'+s.name+'</div><div class="class-label">'+teacherName+"'s Class</div></div><div class='card-body'><div class='field'><div class='field-label'>Username</div><div class='field-value'>"+s.name+"</div></div><div class='field'><div class='field-label'>Password</div><div class='field-value'>"+s.password+"</div></div><div class='field' style='margin-bottom:0'><div class='field-label'>Login URL</div><div class='url-field'>"+window.location.origin+"</div></div></div><div class='card-footer'><div class='footer-text'>Keep this card safe and do not share your password.</div></div></div>';
+
 
   const printLogin=(s)=>{
     const win=window.open('','_blank','width=480,height=680');
-    win.document.write(`<!DOCTYPE html><html><head><title>Login Card - ${s.name}</title><style>${cardStyles}</style></head><body>${buildCard(s,teacher.name)}<script>window.onload=()=>setTimeout(()=>window.print(),800);<\/script></body></html>`);
+    const fontUrl2='https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap';
+    const html2='<!DOCTYPE html><html><head><title>Login Card - '+s.name+'</title><link rel="stylesheet" href="'+fontUrl2+'"><style>'+cardStyles+'</style></head><body>'+buildCard(s,teacher.name)+'<'+'script>window.onload=()=>setTimeout(()=>window.print(),800);<'+'/script></body></html>';
+    win.document.write(html2);
     win.document.close();
   };
 
   const printAllLogins=()=>{
     const win=window.open('','_blank');
     const allCards=students.map(s=>buildCard(s,teacher.name)).join('');
-    win.document.write(`<!DOCTYPE html><html><head><title>Login Cards - ${teacher.name}'s Class</title><style>
-      @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap');
-      *{box-sizing:border-box;margin:0;padding:0}
-      body{font-family:'DM Sans',sans-serif;background:#f0f4ff;padding:32px}
-      .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:24px}
-      .card{background:#fff;border-radius:20px;overflow:hidden;box-shadow:0 4px 20px rgba(59,130,246,.12);break-inside:avoid}
-      .card-header{background:linear-gradient(135deg,#1e3a8a 0%,#3b82f6 50%,#6366f1 100%);padding:22px 24px 28px;text-align:center}
-      .header-logo{display:flex;align-items:center;justify-content:center;gap:7px;margin-bottom:16px}
-      .header-logo-icon{width:28px;height:28px;background:rgba(255,255,255,.2);border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:14px}
-      .header-logo-text{font-size:13px;font-weight:700;color:#fff}
-      .avatar-ring{width:64px;height:64px;border-radius:50%;border:3px solid rgba(255,255,255,.4);display:flex;align-items:center;justify-content:center;margin:0 auto 10px;background:rgba(255,255,255,.15)}
-      .avatar-inner{width:54px;height:54px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:700;color:#fff}
-      .student-name{font-size:18px;font-weight:700;color:#fff;margin-bottom:2px}
-      .class-label{font-size:11px;color:rgba(255,255,255,.7)}
-      .card-body{padding:18px 22px 22px}
-      .field{margin-bottom:12px}
-      .field-label{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#94a3b8;margin-bottom:5px}
-      .field-value{font-family:'DM Mono',monospace;font-size:13px;font-weight:500;color:#0f172a;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:9px 12px}
-      .url-field{font-family:'DM Mono',monospace;font-size:10px;color:#3b82f6;background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:8px 12px;word-break:break-all}
-      .card-footer{background:#f8fafc;border-top:1px solid #e2e8f0;padding:10px 22px;display:flex;align-items:center;gap:6px}
-      .footer-text{font-size:10px;color:#94a3b8}
-      @media print{body{background:#fff;padding:16px}@page{margin:1cm}}
-    </style></head><body><div class="grid">${allCards}</div><script>window.onload=()=>setTimeout(()=>window.print(),800);<\/script></body></html>`);
+    const fontUrl='https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap';
+    const allCss='*{box-sizing:border-box;margin:0;padding:0}body{font-family:DM Sans,sans-serif;background:#f0f4ff;padding:32px}.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:24px}.card{background:#fff;border-radius:20px;overflow:hidden;box-shadow:0 4px 20px rgba(59,130,246,.12);break-inside:avoid}.card-header{background:linear-gradient(135deg,#1e3a8a 0%,#3b82f6 50%,#6366f1 100%);padding:22px 24px 28px;text-align:center}.header-logo{display:flex;align-items:center;justify-content:center;gap:7px;margin-bottom:16px}.header-logo-icon{width:28px;height:28px;background:rgba(255,255,255,.2);border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:14px}.header-logo-text{font-size:13px;font-weight:700;color:#fff}.avatar-ring{width:64px;height:64px;border-radius:50%;border:3px solid rgba(255,255,255,.4);display:flex;align-items:center;justify-content:center;margin:0 auto 10px;background:rgba(255,255,255,.15)}.avatar-inner{width:54px;height:54px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:700;color:#fff}.student-name{font-size:18px;font-weight:700;color:#fff;margin-bottom:2px}.class-label{font-size:11px;color:rgba(255,255,255,.7)}.card-body{padding:18px 22px 22px}.field{margin-bottom:12px}.field-label{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#94a3b8;margin-bottom:5px}.field-value{font-family:DM Mono,monospace;font-size:13px;font-weight:500;color:#0f172a;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:9px 12px}.url-field{font-family:DM Mono,monospace;font-size:10px;color:#3b82f6;background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:8px 12px;word-break:break-all}.card-footer{background:#f8fafc;border-top:1px solid #e2e8f0;padding:10px 22px;display:flex;align-items:center;gap:6px}.footer-text{font-size:10px;color:#94a3b8}@media print{body{background:#fff;padding:16px}@page{margin:1cm}}';
+    const html='<!DOCTYPE html><html><head><title>Login Cards</title><link rel="stylesheet" href="'+fontUrl+'"><style>'+allCss+'</style></head><body><div class="grid">'+allCards+'</div><'+'script>window.onload=()=>setTimeout(()=>window.print(),800);<'+'/script></body></html>';
+    win.document.write(html);
     win.document.close();
   };
   return(
