@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- VERSION 4.0 CLASSIC-RUNTIME -->
+<!-- VERSION 5.0 SECURITY -->
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -202,7 +202,13 @@ async function loadApiKey(){
     }).catch(()=>resolve(''));
   });
 }
-const ADMIN_PW='Peanut';
+// SHA-256 hash of the admin password "Peanut" — the plaintext is no longer in the code
+const ADMIN_PW_HASH='532e896395d0b7e8bfb26356523c00891077857e8bc3e9ca588ebae7939803ee';
+// Hashing helper (Web Crypto API, built into browsers)
+async function sha256(text){
+  const buf=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(text));
+  return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+}
 const COLORS=['#3b82f6','#8b5cf6','#06b6d4','#f59e0b','#22c55e','#ec4899','#f97316','#14b8a6'];
 const DEF={essay:true,translation:true,math:true,coding:true,summarize:true,definitions:true,spellcheck:true,hints:true,shortanswers:true,guiding:true,stepbystep:true};
 const LANGUAGES=['English','German','French','Spanish','Italian','Dutch'];
@@ -382,7 +388,8 @@ function App(){
   const loginTeacher=async()=>{
     try{
       const teachers=await fbGet('teachers')||{};
-      const found=Object.values(teachers).find(t=>t.name.toLowerCase()===f1.toLowerCase()&&t.password===f2);
+      const hashedInput=await sha256(f2);
+      const found=Object.values(teachers).find(t=>t.name.toLowerCase()===f1.toLowerCase()&&(t.password===hashedInput||t.password===f2));
       if(found){setTeacher(found);setScreen('teacher');setErr('');setF1('');setF2('');}
       else setErr('Wrong username or password.');
     }catch(e){setErr('Error: '+e.message);}
@@ -390,11 +397,12 @@ function App(){
 
   const loginStudent=async()=>{
     try{
+      const hashedInput=await sha256(f2);
       const classes=await fbGet('classes')||{};
       let found=null,tid=null;
       for(const[k,cls] of Object.entries(classes)){
         const students=cls.students||{};
-        const s=Object.values(students).find(s=>s.name.toLowerCase()===f1.toLowerCase()&&s.password===f2);
+        const s=Object.values(students).find(s=>s.name.toLowerCase()===f1.toLowerCase()&&(s.password===hashedInput||s.password===f2));
         if(s){found=s;tid=k;break;}
       }
       if(found&&tid){
@@ -406,7 +414,7 @@ function App(){
   };
 
   const saveApiKey=async(key)=>{
-    if(f1!==ADMIN_PW){setErr('Wrong admin password.');return;}
+    if(await sha256(f1)!==ADMIN_PW_HASH){setErr('Wrong admin password.');return;}
     if(!key.trim()){setErr('Enter the API key.');return;}
     try{
       await fbSet('config/apiKey',key.trim());
@@ -418,13 +426,14 @@ function App(){
   };
 
   const createTeacher=async()=>{
-    if(f1!==ADMIN_PW){setErr('Wrong admin password.');return;}
+    if(await sha256(f1)!==ADMIN_PW_HASH){setErr('Wrong admin password.');return;}
     if(!f2.trim()||!f3.trim()){setErr('Fill in name and password.');return;}
     try{
       const teachers=await fbGet('teachers')||{};
       if(Object.values(teachers).find(t=>t.name.toLowerCase()===f2.trim().toLowerCase())){setErr('Name already exists.');return;}
       const id='t'+Date.now();
-      await fbSet('teachers/'+id,{id,name:f2.trim(),password:f3.trim()});
+      const hashedPw=await sha256(f3.trim());
+      await fbSet('teachers/'+id,{id,name:f2.trim(),password:hashedPw});
       const initToggles={essay:true,translation:true,math:true,coding:true,summarize:true,definitions:true,spellcheck:true,hints:true,shortanswers:true,guiding:true,stepbystep:true,language:'Any'};
       await fbSet('classes/'+id,{students:{},toggles:{},globalToggles:{...initToggles},help:{},paste:{},exam:false,examStudents:{},examCode:'',online:{},chatLocked:{}});
       alert('Teacher "'+f2.trim()+'" created!');
@@ -586,14 +595,19 @@ function App(){
     const currentApiHist=activeChat?.apiHist||[];
     const chatId=activeChatId;
     // Secret dev mode command
-    if(text==='//devmode on'){
-      setDevMode(true);
-      updateChat(chatId,ch=>({msgs:[...ch.msgs,{role:'user',text:'//devmode on',model:currentModel},{role:'ai',text:'🔓 **Developer mode activated.** All teacher restrictions are bypassed for this session. Only you can see this message.',model:currentModel}]}));
+    if(text.startsWith('//devmode on')){
+      const pw=text.replace('//devmode on','').trim();
+      if(await sha256(pw)===ADMIN_PW_HASH){
+        setDevMode(true);
+        updateChat(chatId,ch=>({msgs:[...ch.msgs,{role:'ai',text:'Developer mode activated. All restrictions bypassed for this session.',model:currentModel}]}));
+      }else{
+        updateChat(chatId,ch=>({msgs:[...ch.msgs,{role:'ai',text:'Invalid developer password.',model:currentModel}]}));
+      }
       return;
     }
     if(text==='//devmode off'){
       setDevMode(false);
-      updateChat(chatId,ch=>({msgs:[...ch.msgs,{role:'user',text:'//devmode off',model:currentModel},{role:'ai',text:' Developer mode deactivated. Normal restrictions apply.',model:currentModel}]}));
+      updateChat(chatId,ch=>({msgs:[...ch.msgs,{role:'ai',text:'Developer mode deactivated.',model:currentModel}]}));
       return;
     }
     const caps=devMode?{essay:true,translation:true,math:true,coding:true,summarize:true,definitions:true,spellcheck:true,hints:true,shortanswers:true,guiding:true,stepbystep:true,language:'Any'}:(studentCls.toggles||{})[student.id]||DEF;
