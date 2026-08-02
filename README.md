@@ -51,7 +51,7 @@ EduAI-Shield gives teachers full control over how students use AI — enabling p
 | Styling | Custom CSS (no framework) |
 | AI | Anthropic Claude API (`claude-sonnet-4-5`) |
 | Database | Firebase Realtime Database |
-| Hosting | GitHub Pages / Netlify |
+| Hosting | GitHub Pages |
 | Markdown | marked.js |
 
 ---
@@ -70,11 +70,16 @@ README.md         ← This file
 
 | Teacher Dashboard | Student Chat |
 |---|---|
-| Toggle controls, student cards, exam mode, alerts | Multi-chat tabs, model selector, file upload |
+| <img width="1911" height="1077" alt="image" src="https://github.com/user-attachments/assets/389f33c4-6398-415c-96d2-d213bb360674" <img width="1918" height="1079" alt="image" src="https://github.com/user-attachments/assets/b6960169-aead-4b1e-a058-75894ab01259" <img width="1904" height="1061" alt="image" src="https://github.com/user-attachments/assets/f0044bad-4263-4fd8-84d7-7d47c6c92f62" <img width="1897" height="1072" alt="image" src="https://github.com/user-attachments/assets/8199d85d-dc74-48b2-bebf-ea89dfbd220f" />
+ />
+ />
+ />
+ | <img width="1890" height="1067" alt="image" src="https://github.com/user-attachments/assets/735e4b6f-2756-4985-bc83-92b6e3fd298c" />
+ |
 
 ---
 
 ## Author
 
-Built by a Academia Student as a school project.  
+Built by Levio Probst as a school project.  
 EduAI-Shield — Controlled AI for Classrooms.
