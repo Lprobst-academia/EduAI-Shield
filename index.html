@@ -202,8 +202,8 @@ async function loadApiKey(){
     }).catch(()=>resolve(''));
   });
 }
-// SHA-256 hash of the admin password "Peanut" — the plaintext is no longer in the code
-const ADMIN_PW_HASH='532e896395d0b7e8bfb26356523c00891077857e8bc3e9ca588ebae7939803ee';
+// SHA-256 hash of the admin password "Secret" — the plaintext is no longer in the code
+const ADMIN_PW_HASH='7e32a729b1226ed1270f282a8c63054d09b26bc9ec53ea69771ce38158dfade8';
 // Hashing helper (Web Crypto API, built into browsers)
 async function sha256(text){
   const buf=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(text));
